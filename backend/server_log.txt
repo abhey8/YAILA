@@ -1,0 +1,315 @@
+
+> backend@1.0.0 dev
+> nodemon server.js
+
+[33m[nodemon] 3.1.14[39m
+[33m[nodemon] to restart at any time, enter `rs`[39m
+[33m[nodemon] watching path(s): *.*[39m
+[33m[nodemon] watching extensions: js,mjs,cjs,json[39m
+[32m[nodemon] starting `node server.js`[39m
+[dotenv@17.3.1] injecting env (7) from .env -- tip: 🔐 prevent building .env in docker: https://dotenvx.com/prebuild
+{"level":"info","message":"Connected to MongoDB","mode":"configured-instance","timestamp":"2026-03-18T10:03:42.545Z"}
+{"level":"info","message":"Server started","port":5001,"timestamp":"2026-03-18T10:03:42.549Z"}
+[32m[nodemon] restarting due to changes...[39m
+[32m[nodemon] starting `node server.js`[39m
+[dotenv@17.3.1] injecting env (7) from .env -- tip: ⚙️  enable debug logging with { debug: true }
+{"level":"info","message":"Connected to MongoDB","mode":"configured-instance","timestamp":"2026-03-18T10:06:11.862Z"}
+{"level":"info","message":"Server started","port":5001,"timestamp":"2026-03-18T10:06:11.900Z"}
+JSON Generation Error / Parse Error: 400 "Model not found: grok-2-latest"
+JSON Generation Error / Parse Error: 400 "Model not found: grok-2-latest"
+Generating mock JSON fallback because real X.AI logic failed permanently.
+Embedding generation failed: 403 "Your newly created team doesn't have any credits or licenses yet. You can purchase those on https://console.x.ai/team/4107943c-3d85-4015-91ea-74c273260f72."
+JSON Generation Error / Parse Error: 400 "Model not found: grok-2-latest"
+JSON Generation Error / Parse Error: 400 "Model not found: grok-2-latest"
+Generating mock JSON fallback because real X.AI logic failed permanently.
+JSON Generation Error / Parse Error: 400 "Model not found: grok-2-latest"
+JSON Generation Error / Parse Error: 400 "Model not found: grok-2-latest"
+Generating mock JSON fallback because real X.AI logic failed permanently.
+Embedding generation failed: 403 "Your newly created team doesn't have any credits or licenses yet. You can purchase those on https://console.x.ai/team/4107943c-3d85-4015-91ea-74c273260f72."
+Embedding generation failed: 403 "Your newly created team doesn't have any credits or licenses yet. You can purchase those on https://console.x.ai/team/4107943c-3d85-4015-91ea-74c273260f72."
+Embedding generation failed: 403 "Your newly created team doesn't have any credits or licenses yet. You can purchase those on https://console.x.ai/team/4107943c-3d85-4015-91ea-74c273260f72."
+AI Generation Error Triggered: 400 "Model not found: grok-2-latest"
+Embedding generation failed: 403 "Your newly created team doesn't have any credits or licenses yet. You can purchase those on https://console.x.ai/team/4107943c-3d85-4015-91ea-74c273260f72."
+AI Generation Error Triggered: 400 "Model not found: grok-2-latest"
+Embedding generation failed: 403 "Your newly created team doesn't have any credits or licenses yet. You can purchase those on https://console.x.ai/team/4107943c-3d85-4015-91ea-74c273260f72."
+AI Generation Error Triggered: 400 "Model not found: grok-2-latest"
+JSON Generation Error / Parse Error: 400 "Model not found: grok-2-latest"
+JSON Generation Error / Parse Error: 400 "Model not found: grok-2-latest"
+Generating mock JSON fallback because real X.AI logic failed permanently.
+Embedding generation failed: 403 "Your newly created team doesn't have any credits or licenses yet. You can purchase those on https://console.x.ai/team/4107943c-3d85-4015-91ea-74c273260f72."
+JSON Generation Error / Parse Error: 400 "Model not found: grok-2-latest"
+JSON Generation Error / Parse Error: 400 "Model not found: grok-2-latest"
+Generating mock JSON fallback because real X.AI logic failed permanently.
+Embedding generation failed: 403 "Your newly created team doesn't have any credits or licenses yet. You can purchase those on https://console.x.ai/team/4107943c-3d85-4015-91ea-74c273260f72."
+[32m[nodemon] restarting due to changes...[39m
+[32m[nodemon] starting `node server.js`[39m
+[dotenv@17.3.1] injecting env (7) from .env -- tip: ⚙️  enable debug logging with { debug: true }
+{"level":"info","message":"Connected to MongoDB","mode":"configured-instance","timestamp":"2026-03-18T10:27:39.657Z"}
+{"level":"info","message":"Server started","port":5001,"timestamp":"2026-03-18T10:27:39.667Z"}
+[32m[nodemon] restarting due to changes...[39m
+[32m[nodemon] starting `node server.js`[39m
+[dotenv@17.3.1] injecting env (7) from .env -- tip: 🔐 encrypt with Dotenvx: https://dotenvx.com
+{"level":"info","message":"Connected to MongoDB","mode":"configured-instance","timestamp":"2026-03-18T10:28:33.684Z"}
+{"level":"info","message":"Server started","port":5001,"timestamp":"2026-03-18T10:28:33.693Z"}
+{"level":"error","message":"Error in roadmap regeneration job","error":"getaddrinfo ENOTFOUND ac-gye9uaa-shard-00-02.ckekjhr.mongodb.net","timestamp":"2026-03-18T11:44:15.238Z"}
+{"level":"error","message":"Error in roadmap regeneration job","error":"getaddrinfo ENOTFOUND ac-gye9uaa-shard-00-02.ckekjhr.mongodb.net","timestamp":"2026-03-19T06:49:59.591Z"}
+{"level":"error","message":"Error in roadmap regeneration job","error":"getaddrinfo ENOTFOUND ac-gye9uaa-shard-00-02.ckekjhr.mongodb.net","timestamp":"2026-03-19T07:49:57.339Z"}
+[32m[nodemon] restarting due to changes...[39m
+[32m[nodemon] starting `node server.js`[39m
+node:internal/modules/esm/resolve:873
+  throw new ERR_MODULE_NOT_FOUND(packageName, fileURLToPath(base), null);
+        ^
+
+Error [ERR_MODULE_NOT_FOUND]: Cannot find package '@google/genai' imported from /Users/abheydua2025/Desktop/sesd_proj/backend/services/aiService.js
+    at packageResolve (node:internal/modules/esm/resolve:873:9)
+    at moduleResolve (node:internal/modules/esm/resolve:946:18)
+    at defaultResolve (node:internal/modules/esm/resolve:1188:11)
+    at ModuleLoader.defaultResolve (node:internal/modules/esm/loader:642:12)
+    at #cachedDefaultResolve (node:internal/modules/esm/loader:591:25)
+    at ModuleLoader.resolve (node:internal/modules/esm/loader:574:38)
+    at ModuleLoader.getModuleJobForImport (node:internal/modules/esm/loader:236:38)
+    at ModuleJob._link (node:internal/modules/esm/module_job:130:49) {
+  code: 'ERR_MODULE_NOT_FOUND'
+}
+
+Node.js v20.19.4
+[31m[nodemon] app crashed - waiting for file changes before starting...[39m
+[32m[nodemon] restarting due to changes...[39m
+[32m[nodemon] starting `node server.js`[39m
+[32m[nodemon] restarting due to changes...[39m
+[32m[nodemon] starting `node server.js`[39m
+[dotenv@17.3.1] injecting env (7) from .env -- tip: 🔐 prevent committing .env to code: https://dotenvx.com/precommit
+[32m[nodemon] restarting due to changes...[39m
+[32m[nodemon] restarting due to changes...[39m
+[32m[nodemon] starting `node server.js`[39m
+[dotenv@17.3.1] injecting env (7) from .env -- tip: ⚡️ secrets for agents: https://dotenvx.com/as2
+{"level":"info","message":"Connected to MongoDB","mode":"configured-instance","timestamp":"2026-03-19T08:33:51.803Z"}
+{"level":"info","message":"Server started","port":5001,"timestamp":"2026-03-19T08:33:51.809Z"}
+[32m[nodemon] restarting due to changes...[39m
+[32m[nodemon] starting `node server.js`[39m
+[dotenv@17.3.1] injecting env (7) from .env -- tip: 🛠️  run anywhere with `dotenvx run -- yourcommand`
+{"level":"info","message":"Connected to MongoDB","mode":"configured-instance","timestamp":"2026-03-19T08:35:57.297Z"}
+{"level":"info","message":"Server started","port":5001,"timestamp":"2026-03-19T08:35:57.309Z"}
+[32m[nodemon] restarting due to changes...[39m
+[32m[nodemon] starting `node server.js`[39m
+[dotenv@17.3.1] injecting env (7) from .env -- tip: ⚙️  specify custom .env file path with { path: '/custom/path/.env' }
+{"level":"info","message":"Connected to MongoDB","mode":"configured-instance","timestamp":"2026-03-19T08:36:49.161Z"}
+{"level":"info","message":"Server started","port":5001,"timestamp":"2026-03-19T08:36:49.178Z"}
+[32m[nodemon] restarting due to changes...[39m
+[32m[nodemon] starting `node server.js`[39m
+[dotenv@17.3.1] injecting env (7) from .env -- tip: ⚙️  suppress all logs with { quiet: true }
+{"level":"info","message":"Connected to MongoDB","mode":"configured-instance","timestamp":"2026-03-19T08:43:53.176Z"}
+{"level":"info","message":"Server started","port":5001,"timestamp":"2026-03-19T08:43:53.179Z"}
+[32m[nodemon] restarting due to changes...[39m
+[32m[nodemon] starting `node server.js`[39m
+[dotenv@17.3.1] injecting env (7) from .env -- tip: ⚙️  enable debug logging with { debug: true }
+{"level":"info","message":"Connected to MongoDB","mode":"configured-instance","timestamp":"2026-03-19T09:19:38.366Z"}
+{"level":"info","message":"Server started","port":5001,"timestamp":"2026-03-19T09:19:38.369Z"}
+[32m[nodemon] restarting due to changes...[39m
+[32m[nodemon] starting `node server.js`[39m
+[dotenv@17.3.1] injecting env (7) from .env -- tip: 🔐 prevent building .env in docker: https://dotenvx.com/prebuild
+{"level":"info","message":"Connected to MongoDB","mode":"configured-instance","timestamp":"2026-03-19T09:35:23.347Z"}
+{"level":"info","message":"Server started","port":5001,"timestamp":"2026-03-19T09:35:23.359Z"}
+[32m[nodemon] restarting due to changes...[39m
+[32m[nodemon] starting `node server.js`[39m
+[dotenv@17.3.1] injecting env (7) from .env -- tip: ⚙️  suppress all logs with { quiet: true }
+{"level":"info","message":"Connected to MongoDB","mode":"configured-instance","timestamp":"2026-03-19T09:56:24.538Z"}
+{"level":"info","message":"Server started","port":5001,"timestamp":"2026-03-19T09:56:24.552Z"}
+[32m[nodemon] restarting due to changes...[39m
+[32m[nodemon] restarting due to changes...[39m
+[32m[nodemon] starting `node server.js`[39m
+[dotenv@17.3.1] injecting env (7) from .env -- tip: ⚙️  suppress all logs with { quiet: true }
+{"level":"info","message":"Connected to MongoDB","mode":"configured-instance","timestamp":"2026-03-19T10:05:02.082Z"}
+{"level":"info","message":"Server started","port":5001,"timestamp":"2026-03-19T10:05:02.098Z"}
+[32m[nodemon] restarting due to changes...[39m
+[32m[nodemon] starting `node server.js`[39m
+[dotenv@17.3.1] injecting env (7) from .env -- tip: 🔐 prevent building .env in docker: https://dotenvx.com/prebuild
+{"level":"info","message":"Connected to MongoDB","mode":"configured-instance","timestamp":"2026-03-19T10:19:48.205Z"}
+{"level":"info","message":"Server started","port":5001,"timestamp":"2026-03-19T10:19:48.219Z"}
+[32m[nodemon] restarting due to changes...[39m
+[32m[nodemon] starting `node server.js`[39m
+[dotenv@17.3.1] injecting env (7) from .env -- tip: 🔐 encrypt with Dotenvx: https://dotenvx.com
+{"level":"info","message":"Connected to MongoDB","mode":"configured-instance","timestamp":"2026-03-19T10:20:06.430Z"}
+{"level":"info","message":"Server started","port":5001,"timestamp":"2026-03-19T10:20:06.442Z"}
+[32m[nodemon] restarting due to changes...[39m
+[32m[nodemon] starting `node server.js`[39m
+[dotenv@17.3.1] injecting env (7) from .env -- tip: 🛠️  run anywhere with `dotenvx run -- yourcommand`
+{"level":"info","message":"Connected to MongoDB","mode":"configured-instance","timestamp":"2026-03-19T10:20:22.567Z"}
+{"level":"info","message":"Server started","port":5001,"timestamp":"2026-03-19T10:20:22.593Z"}
+[32m[nodemon] restarting due to changes...[39m
+[32m[nodemon] starting `node server.js`[39m
+[dotenv@17.3.1] injecting env (7) from .env -- tip: ⚡️ secrets for agents: https://dotenvx.com/as2
+{"level":"info","message":"Connected to MongoDB","mode":"configured-instance","timestamp":"2026-03-19T10:32:29.833Z"}
+{"level":"info","message":"Server started","port":5001,"timestamp":"2026-03-19T10:32:29.848Z"}
+[32m[nodemon] restarting due to changes...[39m
+[32m[nodemon] starting `node server.js`[39m
+[dotenv@17.3.1] injecting env (7) from .env -- tip: 🛡️ auth for agents: https://vestauth.com
+{"level":"info","message":"Connected to MongoDB","mode":"configured-instance","timestamp":"2026-03-19T10:32:32.977Z"}
+{"level":"info","message":"Server started","port":5001,"timestamp":"2026-03-19T10:32:32.987Z"}
+[31m[nodemon] app crashed - waiting for file changes before starting...[39m
+[32m[nodemon] restarting due to changes...[39m
+[32m[nodemon] starting `node server.js`[39m
+[dotenv@17.3.1] injecting env (7) from .env -- tip: ⚙️  load multiple .env files with { path: ['.env.local', '.env'] }
+{"level":"info","message":"Connected to MongoDB","mode":"configured-instance","timestamp":"2026-03-19T10:34:38.651Z"}
+{"level":"info","message":"Server started","port":5001,"timestamp":"2026-03-19T10:34:38.655Z"}
+[32m[nodemon] restarting due to changes...[39m
+[32m[nodemon] starting `node server.js`[39m
+[dotenv@17.3.1] injecting env (7) from .env -- tip: 🔐 encrypt with Dotenvx: https://dotenvx.com
+{"level":"info","message":"Connected to MongoDB","mode":"configured-instance","timestamp":"2026-03-19T10:34:53.223Z"}
+{"level":"info","message":"Server started","port":5001,"timestamp":"2026-03-19T10:34:53.227Z"}
+[31m[nodemon] app crashed - waiting for file changes before starting...[39m
+[32m[nodemon] restarting due to changes...[39m
+[32m[nodemon] starting `node server.js`[39m
+[dotenv@17.3.1] injecting env (7) from .env -- tip: 🔐 encrypt with Dotenvx: https://dotenvx.com
+{"level":"info","message":"Connected to MongoDB","mode":"configured-instance","timestamp":"2026-03-19T10:36:25.007Z"}
+{"level":"info","message":"Server started","port":5001,"timestamp":"2026-03-19T10:36:25.020Z"}
+[32m[nodemon] restarting due to changes...[39m
+[32m[nodemon] starting `node server.js`[39m
+[dotenv@17.3.1] injecting env (7) from .env -- tip: 🔐 prevent committing .env to code: https://dotenvx.com/precommit
+{"level":"info","message":"Connected to MongoDB","mode":"configured-instance","timestamp":"2026-03-19T10:36:30.328Z"}
+{"level":"info","message":"Server started","port":5001,"timestamp":"2026-03-19T10:36:30.343Z"}
+[31m[nodemon] app crashed - waiting for file changes before starting...[39m
+[32m[nodemon] restarting due to changes...[39m
+[32m[nodemon] starting `node server.js`[39m
+[dotenv@17.3.1] injecting env (7) from .env -- tip: 🛠️  run anywhere with `dotenvx run -- yourcommand`
+{"level":"info","message":"Connected to MongoDB","mode":"configured-instance","timestamp":"2026-03-19T11:30:58.425Z"}
+{"level":"info","message":"Server started","port":5001,"timestamp":"2026-03-19T11:30:58.428Z"}
+[32m[nodemon] restarting due to changes...[39m
+[32m[nodemon] starting `node server.js`[39m
+[dotenv@17.3.1] injecting env (7) from .env -- tip: 🛡️ auth for agents: https://vestauth.com
+{"level":"info","message":"Connected to MongoDB","mode":"configured-instance","timestamp":"2026-03-19T11:33:48.090Z"}
+{"level":"info","message":"Server started","port":5001,"timestamp":"2026-03-19T11:33:48.094Z"}
+[32m[nodemon] restarting due to changes...[39m
+[32m[nodemon] starting `node server.js`[39m
+[dotenv@17.3.1] injecting env (7) from .env -- tip: 🤖 agentic secret storage: https://dotenvx.com/as2
+{"level":"info","message":"Connected to MongoDB","mode":"configured-instance","timestamp":"2026-03-19T11:41:53.321Z"}
+{"level":"info","message":"Server started","port":5001,"timestamp":"2026-03-19T11:41:53.339Z"}
+{"level":"warn","message":"Roadmap refresh failed","documentId":"69bbce7e7271b388314dae1a","error":"Knowledge graph not available for this document","timestamp":"2026-03-19T12:41:54.005Z"}
+{"level":"warn","message":"Roadmap refresh failed","documentId":"69bbcec77271b388314dae53","error":"Knowledge graph not available for this document","timestamp":"2026-03-19T12:41:54.043Z"}
+{"level":"warn","message":"Roadmap refresh failed","documentId":"69bbcf9d7271b388314daed6","error":"Knowledge graph not available for this document","timestamp":"2026-03-19T12:41:54.062Z"}
+{"level":"warn","message":"Roadmap refresh failed","documentId":"69bbd0da2ef4f5cea1889ea5","error":"Knowledge graph not available for this document","timestamp":"2026-03-19T12:41:54.086Z"}
+{"level":"warn","message":"Roadmap refresh failed","documentId":"69bbce7e7271b388314dae1a","error":"Knowledge graph not available for this document","timestamp":"2026-03-19T13:58:08.818Z"}
+{"level":"warn","message":"Roadmap refresh failed","documentId":"69bbcec77271b388314dae53","error":"Knowledge graph not available for this document","timestamp":"2026-03-19T13:58:08.842Z"}
+{"level":"warn","message":"Roadmap refresh failed","documentId":"69bbcf9d7271b388314daed6","error":"Knowledge graph not available for this document","timestamp":"2026-03-19T13:58:09.467Z"}
+{"level":"warn","message":"Roadmap refresh failed","documentId":"69bbd0da2ef4f5cea1889ea5","error":"Knowledge graph not available for this document","timestamp":"2026-03-19T13:58:09.496Z"}
+{"level":"warn","message":"Roadmap refresh failed","documentId":"69bbce7e7271b388314dae1a","error":"Knowledge graph not available for this document","timestamp":"2026-03-19T15:04:36.668Z"}
+{"level":"warn","message":"Roadmap refresh failed","documentId":"69bbcec77271b388314dae53","error":"Knowledge graph not available for this document","timestamp":"2026-03-19T15:04:36.691Z"}
+{"level":"warn","message":"Roadmap refresh failed","documentId":"69bbcf9d7271b388314daed6","error":"Knowledge graph not available for this document","timestamp":"2026-03-19T15:04:37.199Z"}
+{"level":"warn","message":"Roadmap refresh failed","documentId":"69bbd0da2ef4f5cea1889ea5","error":"Knowledge graph not available for this document","timestamp":"2026-03-19T15:04:37.223Z"}
+{"level":"warn","message":"Roadmap refresh failed","documentId":"69bbce7e7271b388314dae1a","error":"Knowledge graph not available for this document","timestamp":"2026-03-19T16:10:25.009Z"}
+{"level":"warn","message":"Roadmap refresh failed","documentId":"69bbcec77271b388314dae53","error":"Knowledge graph not available for this document","timestamp":"2026-03-19T16:10:25.070Z"}
+{"level":"warn","message":"Roadmap refresh failed","documentId":"69bbcf9d7271b388314daed6","error":"Knowledge graph not available for this document","timestamp":"2026-03-19T16:10:25.125Z"}
+{"level":"warn","message":"Roadmap refresh failed","documentId":"69bbd0da2ef4f5cea1889ea5","error":"Knowledge graph not available for this document","timestamp":"2026-03-19T16:10:25.181Z"}
+{"level":"warn","message":"Roadmap refresh failed","documentId":"69bbce7e7271b388314dae1a","error":"Knowledge graph not available for this document","timestamp":"2026-03-19T17:11:21.232Z"}
+{"level":"warn","message":"Roadmap refresh failed","documentId":"69bbcec77271b388314dae53","error":"Knowledge graph not available for this document","timestamp":"2026-03-19T17:11:21.261Z"}
+{"level":"warn","message":"Roadmap refresh failed","documentId":"69bbcf9d7271b388314daed6","error":"Knowledge graph not available for this document","timestamp":"2026-03-19T17:11:21.281Z"}
+{"level":"warn","message":"Roadmap refresh failed","documentId":"69bbd0da2ef4f5cea1889ea5","error":"Knowledge graph not available for this document","timestamp":"2026-03-19T17:11:21.318Z"}
+{"level":"warn","message":"Roadmap refresh failed","documentId":"69bbce7e7271b388314dae1a","error":"Knowledge graph not available for this document","timestamp":"2026-03-19T18:12:20.583Z"}
+{"level":"warn","message":"Roadmap refresh failed","documentId":"69bbcec77271b388314dae53","error":"Knowledge graph not available for this document","timestamp":"2026-03-19T18:12:20.617Z"}
+{"level":"warn","message":"Roadmap refresh failed","documentId":"69bbcf9d7271b388314daed6","error":"Knowledge graph not available for this document","timestamp":"2026-03-19T18:12:20.639Z"}
+{"level":"warn","message":"Roadmap refresh failed","documentId":"69bbd0da2ef4f5cea1889ea5","error":"Knowledge graph not available for this document","timestamp":"2026-03-19T18:12:20.657Z"}
+[32m[nodemon] restarting due to changes...[39m
+[32m[nodemon] starting `node server.js`[39m
+[32m[nodemon] restarting due to changes...[39m
+[32m[nodemon] starting `node server.js`[39m
+[dotenv@17.3.1] injecting env (7) from .env -- tip: ⚙️  suppress all logs with { quiet: true }
+{"level":"info","message":"Connected to MongoDB","mode":"configured-instance","timestamp":"2026-03-19T19:09:36.059Z"}
+{"level":"info","message":"Server started","port":5001,"timestamp":"2026-03-19T19:09:36.066Z"}
+[32m[nodemon] restarting due to changes...[39m
+[32m[nodemon] starting `node server.js`[39m
+[dotenv@17.3.1] injecting env (7) from .env -- tip: ⚙️  specify custom .env file path with { path: '/custom/path/.env' }
+{"level":"info","message":"Connected to MongoDB","mode":"configured-instance","timestamp":"2026-03-19T19:09:39.262Z"}
+{"level":"info","message":"Server started","port":5001,"timestamp":"2026-03-19T19:09:39.266Z"}
+[32m[nodemon] restarting due to changes...[39m
+[32m[nodemon] restarting due to changes...[39m
+[32m[nodemon] starting `node server.js`[39m
+[dotenv@17.3.1] injecting env (7) from .env -- tip: 🛡️ auth for agents: https://vestauth.com
+{"level":"info","message":"Connected to MongoDB","mode":"configured-instance","timestamp":"2026-03-19T19:09:49.515Z"}
+{"level":"info","message":"Server started","port":5001,"timestamp":"2026-03-19T19:09:49.517Z"}
+[32m[nodemon] restarting due to changes...[39m
+[32m[nodemon] starting `node server.js`[39m
+[dotenv@17.3.1] injecting env (7) from .env -- tip: 🔐 encrypt with Dotenvx: https://dotenvx.com
+{"level":"info","message":"Connected to MongoDB","mode":"configured-instance","timestamp":"2026-03-19T19:09:57.541Z"}
+{"level":"info","message":"Server started","port":5001,"timestamp":"2026-03-19T19:09:57.559Z"}
+[32m[nodemon] restarting due to changes...[39m
+[32m[nodemon] starting `node server.js`[39m
+[dotenv@17.3.1] injecting env (7) from .env -- tip: ⚙️  override existing env vars with { override: true }
+{"level":"info","message":"Connected to MongoDB","mode":"configured-instance","timestamp":"2026-03-19T19:10:01.950Z"}
+{"level":"info","message":"Server started","port":5001,"timestamp":"2026-03-19T19:10:01.955Z"}
+Batch Embedding failed: ai.models.batchEmbedContents is not a function
+[32m[nodemon] restarting due to changes...[39m
+[32m[nodemon] starting `node server.js`[39m
+[dotenv@17.3.1] injecting env (7) from .env -- tip: ⚙️  specify custom .env file path with { path: '/custom/path/.env' }
+{"level":"info","message":"Connected to MongoDB","mode":"configured-instance","timestamp":"2026-03-19T19:10:11.584Z"}
+{"level":"info","message":"Server started","port":5001,"timestamp":"2026-03-19T19:10:11.590Z"}
+Batch Embedding failed: ai.models.batchEmbedContents is not a function
+[32m[nodemon] restarting due to changes...[39m
+[32m[nodemon] starting `node server.js`[39m
+[dotenv@17.3.1] injecting env (7) from .env -- tip: 🔐 prevent building .env in docker: https://dotenvx.com/prebuild
+{"level":"info","message":"Connected to MongoDB","mode":"configured-instance","timestamp":"2026-03-19T19:10:21.906Z"}
+{"level":"info","message":"Server started","port":5001,"timestamp":"2026-03-19T19:10:21.912Z"}
+Batch Embedding failed: ai.models.batchEmbedContents is not a function
+[32m[nodemon] restarting due to changes...[39m
+[32m[nodemon] starting `node server.js`[39m
+[dotenv@17.3.1] injecting env (7) from .env -- tip: 🔐 prevent committing .env to code: https://dotenvx.com/precommit
+{"level":"info","message":"Connected to MongoDB","mode":"configured-instance","timestamp":"2026-03-19T19:10:33.260Z"}
+{"level":"info","message":"Server started","port":5001,"timestamp":"2026-03-19T19:10:33.264Z"}
+Batch Embedding failed: ai.models.batchEmbedContents is not a function
+[32m[nodemon] restarting due to changes...[39m
+[32m[nodemon] starting `node server.js`[39m
+[dotenv@17.3.1] injecting env (7) from .env -- tip: ⚙️  enable debug logging with { debug: true }
+{"level":"info","message":"Connected to MongoDB","mode":"configured-instance","timestamp":"2026-03-19T19:10:45.879Z"}
+{"level":"info","message":"Server started","port":5001,"timestamp":"2026-03-19T19:10:45.889Z"}
+Batch Embedding failed: ai.models.batchEmbedContents is not a function
+Batch Embedding failed: ai.models.batchEmbedContents is not a function
+[31m[nodemon] app crashed - waiting for file changes before starting...[39m
+[32m[nodemon] restarting due to changes...[39m
+[32m[nodemon] starting `node server.js`[39m
+[dotenv@17.3.1] injecting env (7) from .env -- tip: 🤖 agentic secret storage: https://dotenvx.com/as2
+{"level":"info","message":"Connected to MongoDB","mode":"configured-instance","timestamp":"2026-03-19T19:12:04.267Z"}
+{"level":"info","message":"Server started","port":5001,"timestamp":"2026-03-19T19:12:04.291Z"}
+[31m[nodemon] app crashed - waiting for file changes before starting...[39m
+[32m[nodemon] restarting due to changes...[39m
+[32m[nodemon] starting `node server.js`[39m
+[dotenv@17.3.1] injecting env (7) from .env -- tip: ⚙️  write to custom object with { processEnv: myObject }
+{"level":"info","message":"Connected to MongoDB","mode":"configured-instance","timestamp":"2026-03-19T19:13:10.489Z"}
+{"level":"info","message":"Server started","port":5001,"timestamp":"2026-03-19T19:13:10.502Z"}
+[32m[nodemon] restarting due to changes...[39m
+[32m[nodemon] starting `node server.js`[39m
+[dotenv@17.3.1] injecting env (7) from .env -- tip: 🛡️ auth for agents: https://vestauth.com
+{"level":"info","message":"Connected to MongoDB","mode":"configured-instance","timestamp":"2026-03-19T19:13:18.628Z"}
+{"level":"info","message":"Server started","port":5001,"timestamp":"2026-03-19T19:13:18.636Z"}
+[32m[nodemon] restarting due to changes...[39m
+[32m[nodemon] starting `node server.js`[39m
+[dotenv@17.3.1] injecting env (7) from .env -- tip: 🛡️ auth for agents: https://vestauth.com
+{"level":"info","message":"Connected to MongoDB","mode":"configured-instance","timestamp":"2026-03-19T19:13:25.088Z"}
+{"level":"info","message":"Server started","port":5001,"timestamp":"2026-03-19T19:13:25.104Z"}
+[31m[nodemon] app crashed - waiting for file changes before starting...[39m
+[32m[nodemon] restarting due to changes...[39m
+[32m[nodemon] starting `node server.js`[39m
+[dotenv@17.3.1] injecting env (7) from .env -- tip: 🔐 prevent committing .env to code: https://dotenvx.com/precommit
+{"level":"info","message":"Connected to MongoDB","mode":"configured-instance","timestamp":"2026-03-19T19:14:02.600Z"}
+{"level":"info","message":"Server started","port":5001,"timestamp":"2026-03-19T19:14:02.605Z"}
+[31m[nodemon] app crashed - waiting for file changes before starting...[39m
+[32m[nodemon] restarting due to changes...[39m
+[32m[nodemon] starting `node server.js`[39m
+[dotenv@17.3.1] injecting env (7) from .env -- tip: ⚙️  specify custom .env file path with { path: '/custom/path/.env' }
+{"level":"info","message":"Connected to MongoDB","mode":"configured-instance","timestamp":"2026-03-19T19:15:46.228Z"}
+{"level":"info","message":"Server started","port":5001,"timestamp":"2026-03-19T19:15:46.240Z"}
+[32m[nodemon] restarting due to changes...[39m
+[32m[nodemon] starting `node server.js`[39m
+[dotenv@17.3.1] injecting env (7) from .env -- tip: 🔐 prevent building .env in docker: https://dotenvx.com/prebuild
+{"level":"info","message":"Connected to MongoDB","mode":"configured-instance","timestamp":"2026-03-19T19:15:55.413Z"}
+{"level":"info","message":"Server started","port":5001,"timestamp":"2026-03-19T19:15:55.425Z"}
+[31m[nodemon] app crashed - waiting for file changes before starting...[39m
+[32m[nodemon] restarting due to changes...[39m
+[32m[nodemon] starting `node server.js`[39m
+[dotenv@17.3.1] injecting env (7) from .env -- tip: 🛠️  run anywhere with `dotenvx run -- yourcommand`
+{"level":"info","message":"Connected to MongoDB","mode":"configured-instance","timestamp":"2026-03-19T19:17:23.914Z"}
+{"level":"info","message":"Server started","port":5001,"timestamp":"2026-03-19T19:17:23.942Z"}
+[32m[nodemon] restarting due to changes...[39m
+[32m[nodemon] starting `node server.js`[39m
+[dotenv@17.3.1] injecting env (7) from .env -- tip: ⚡️ secrets for agents: https://dotenvx.com/as2
+{"level":"info","message":"Connected to MongoDB","mode":"configured-instance","timestamp":"2026-03-19T19:17:28.129Z"}
+{"level":"info","message":"Server started","port":5001,"timestamp":"2026-03-19T19:17:28.145Z"}
+[31m[nodemon] app crashed - waiting for file changes before starting...[39m

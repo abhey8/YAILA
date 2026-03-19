@@ -1,0 +1,14 @@
+# General
+node_modules/
+.DS_Store
+.env
+*.log
+
+# Build files
+dist/
+build/
+coverage/
+
+# IDE files
+.vscode/
+.idea/
