@@ -18,32 +18,32 @@ export function QuizQuestionCard({
   showResult = false
 }: QuizQuestionCardProps) {
   return (
-    <div className="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 p-6 shadow-sm">
-      <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-6">{question}</h3>
+    <div className="study-panel rounded-xl p-6">
+      <h3 className="text-lg font-semibold text-[var(--foreground)] mb-6 leading-8">{question}</h3>
       
       <div className="space-y-3">
         {options.map((option, index) => {
           const isSelected = selectedOption === index;
           const isCorrect = correctOption === index;
           
-          let bgClass = "bg-white hover:bg-gray-50 dark:bg-gray-800 dark:hover:bg-gray-700";
-          let borderClass = "border-gray-200 dark:border-gray-600";
-          let textClass = "text-gray-700 dark:text-gray-300";
+          let bgClass = "bg-[var(--surface-1)] hover:bg-[var(--surface-2)]";
+          let borderClass = "border-[var(--border)]";
+          let textClass = "text-[var(--foreground-soft)]";
           
           if (showResult) {
             if (isCorrect) {
-              bgClass = "bg-green-50 dark:bg-green-900/30";
-              borderClass = "border-green-500 dark:border-green-500";
-              textClass = "text-green-900 dark:text-green-300";
+              bgClass = "bg-[var(--success-surface)]";
+              borderClass = "border-[var(--success)]";
+              textClass = "text-[var(--success)]";
             } else if (isSelected && !isCorrect) {
-              bgClass = "bg-red-50 dark:bg-red-900/30";
-              borderClass = "border-red-500 dark:border-red-500";
-              textClass = "text-red-900 dark:text-red-300";
+              bgClass = "bg-[var(--weak-surface)]";
+              borderClass = "border-[var(--weak)]";
+              textClass = "text-[var(--weak)]";
             }
           } else if (isSelected) {
-            bgClass = "bg-indigo-50 dark:bg-indigo-900/40";
-            borderClass = "border-indigo-500 dark:border-indigo-400";
-            textClass = "text-indigo-900 dark:text-indigo-200";
+            bgClass = "bg-[var(--accent-soft)]";
+            borderClass = "border-[var(--accent-primary)]";
+            textClass = "text-[var(--accent-primary)]";
           }
 
           return (
@@ -59,17 +59,17 @@ export function QuizQuestionCard({
             >
               <div className="flex items-center gap-3">
                 <div className={`w-6 h-6 rounded-full border-2 flex items-center justify-center flex-shrink-0 ${
-                  isSelected ? borderClass : "border-gray-300"
+                  isSelected ? borderClass : "border-[var(--border)]"
                 }`}>
                   {isSelected && (
                     <div className={`w-3 h-3 rounded-full ${
-                      showResult && isCorrect ? "bg-green-500" :
-                      showResult && !isCorrect ? "bg-red-500" :
-                      "bg-indigo-500"
+                      showResult && isCorrect ? "bg-[var(--success)]" :
+                      showResult && !isCorrect ? "bg-[var(--weak)]" :
+                      "bg-[var(--accent-primary)]"
                     }`} />
                   )}
                 </div>
-                <span className="font-medium">{option}</span>
+                <span className="font-medium leading-7">{option}</span>
               </div>
             </motion.button>
           );

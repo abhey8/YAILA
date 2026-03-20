@@ -31,9 +31,14 @@ export function Layout() {
   };
 
   return (
-    <div className="flex h-screen bg-gradient-to-br from-slate-950 via-slate-900 to-slate-950 relative overflow-hidden">
-      <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top_right,_var(--accent-primary)_0%,_transparent_50%)] opacity-10" />
-      <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_bottom_left,_var(--accent-secondary)_0%,_transparent_50%)] opacity-10" />
+    <div className="flex h-screen bg-[var(--background-solid)] relative overflow-hidden">
+      <div
+        className="absolute inset-0 opacity-90"
+        style={{
+          background:
+            "radial-gradient(ellipse at top right, color-mix(in srgb, var(--accent-primary) 10%, transparent) 0%, transparent 48%), radial-gradient(ellipse at bottom left, color-mix(in srgb, var(--accent-tertiary) 8%, transparent) 0%, transparent 42%), var(--background)",
+        }}
+      />
 
       <Sidebar isOpen={isSidebarOpen} onToggle={() => setIsSidebarOpen(!isSidebarOpen)} />
 

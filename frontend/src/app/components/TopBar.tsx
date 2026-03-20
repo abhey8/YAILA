@@ -22,7 +22,7 @@ export function TopBar({ onSearch, onMenuClick, isSidebarOpen }: TopBarProps) {
   };
 
   return (
-    <header className="bg-[var(--glass-background)] backdrop-blur-xl border-b border-[var(--glass-border)] px-6 py-4">
+    <header className="bg-[var(--glass-background)] backdrop-blur-md border-b border-[var(--glass-border)] px-6 py-4">
       <div className="flex items-center gap-4">
         <button
           onClick={onMenuClick}
@@ -38,7 +38,7 @@ export function TopBar({ onSearch, onMenuClick, isSidebarOpen }: TopBarProps) {
             placeholder="Search documents, concepts, topics..."
             value={searchValue}
             onChange={handleSearch}
-            className="w-full pl-12 pr-4 py-3 bg-[var(--secondary)]/50 border border-[var(--border)] rounded-2xl focus:outline-none focus:ring-2 focus:ring-[var(--accent-primary)] transition-all text-[var(--foreground)] placeholder:text-[var(--muted-foreground)]"
+            className="w-full pl-12 pr-4 py-3 study-input rounded-2xl"
           />
         </div>
 
@@ -53,11 +53,12 @@ export function TopBar({ onSearch, onMenuClick, isSidebarOpen }: TopBarProps) {
 
           <button className="relative p-2.5 rounded-xl hover:bg-[var(--secondary)] transition-colors">
             <Bell className="w-5 h-5 text-[var(--muted-foreground)]" />
-            <span className="absolute top-2 right-2 w-2 h-2 bg-red-500 rounded-full ring-2 ring-[var(--glass-background)]" />
+            <span className="absolute top-2 right-2 w-2 h-2 bg-[var(--weak)] rounded-full ring-2 ring-[var(--glass-background)]" />
           </button>
 
           <Link to="/profile">
-            <div className="w-10 h-10 bg-gradient-to-br from-[var(--accent-primary)] via-[var(--accent-secondary)] to-[var(--accent-tertiary)] rounded-2xl flex items-center justify-center text-white font-bold shadow-lg shadow-[var(--accent-primary)]/20 hover:scale-105 transition-transform overflow-hidden">
+            <div className="w-10 h-10 rounded-2xl flex items-center justify-center text-white font-bold shadow-[var(--shadow-soft)] hover:scale-105 transition-transform overflow-hidden border border-[var(--border)]"
+              style={{ background: "linear-gradient(155deg, var(--accent-primary) 0%, color-mix(in srgb, var(--accent-secondary) 68%, var(--accent-primary) 32%) 100%)" }}>
               {user?.profilePic ? (
                 <img src={user.profilePic} alt="Profile" className="w-full h-full object-cover" />
               ) : (

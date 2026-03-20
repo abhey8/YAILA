@@ -14,9 +14,9 @@ export function GlassCard({ children, className = "", hover = false, onClick }: 
   return (
     <Component
       onClick={onClick}
-      whileHover={hover ? { scale: 1.02, y: -4 } : undefined}
+      whileHover={hover ? { scale: 1.01, y: -2 } : undefined}
       transition={{ duration: 0.2 }}
-      className={`bg-[var(--glass-background)] backdrop-blur-xl border border-[var(--glass-border)] rounded-2xl shadow-2xl shadow-black/10 ${hover ? "cursor-pointer" : ""} ${className}`}
+      className={`bg-[var(--glass-background)] backdrop-blur-md border border-[var(--glass-border)] rounded-2xl shadow-[var(--shadow-soft)] ${hover ? "cursor-pointer study-card-hover" : ""} ${className}`}
     >
       {children}
     </Component>

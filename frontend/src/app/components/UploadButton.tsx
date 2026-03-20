@@ -11,7 +11,7 @@ export function UploadButton({ onClick }: UploadButtonProps) {
       whileHover={{ scale: 1.05 }}
       whileTap={{ scale: 0.95 }}
       onClick={onClick}
-      className="fixed bottom-8 right-8 w-14 h-14 bg-indigo-600 hover:bg-indigo-700 text-white rounded-full shadow-lg hover:shadow-xl transition-all flex items-center justify-center z-50"
+      className="fixed bottom-8 right-8 w-14 h-14 study-button-primary rounded-full transition-all flex items-center justify-center z-50"
     >
       <Upload className="w-6 h-6" />
     </motion.button>

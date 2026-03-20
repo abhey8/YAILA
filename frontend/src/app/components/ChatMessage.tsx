@@ -15,23 +15,23 @@ export function ChatMessage({ role, content }: ChatMessageProps) {
       animate={{ opacity: 1, y: 0 }}
       className={`flex gap-3 ${isUser ? "flex-row-reverse" : "flex-row"}`}
     >
-      <div className={`w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0 ${
-        isUser ? "bg-indigo-600" : "bg-purple-600"
+      <div className={`w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0 shadow-sm ${
+        isUser ? "bg-[var(--accent-primary)] text-[var(--primary-foreground)]" : "bg-[var(--surface-3)] text-[var(--accent-secondary)] border border-[var(--border)]"
       }`}>
         {isUser ? (
-          <User className="w-5 h-5 text-white" />
+          <User className="w-5 h-5" />
         ) : (
-          <Bot className="w-5 h-5 text-white" />
+          <Bot className="w-5 h-5" />
         )}
       </div>
 
       <div className={`max-w-[70%] ${isUser ? "items-end" : "items-start"} flex flex-col`}>
         <div className={`rounded-2xl px-4 py-3 ${
           isUser 
-            ? "bg-indigo-600 text-white" 
-            : "bg-white border border-gray-200 text-gray-900 dark:bg-gray-800 dark:border-gray-700 dark:text-gray-100"
+            ? "bg-[var(--accent-primary)] text-[var(--primary-foreground)]"
+            : "study-panel text-[var(--foreground)]"
         }`}>
-          <p className="text-sm leading-relaxed whitespace-pre-wrap">{content}</p>
+          <p className="text-sm leading-7 whitespace-pre-wrap">{content}</p>
         </div>
       </div>
     </motion.div>

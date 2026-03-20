@@ -1,4 +1,4 @@
-import { AlertTriangle, BookOpen, Brain, Clock, FileText, Flame, Target } from "lucide-react";
+import { AlertTriangle, BookOpen, Brain, FileText, Flame, Target } from "lucide-react";
 import { motion } from "motion/react";
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router";
@@ -35,28 +35,28 @@ export default function Dashboard() {
       label: "Average Quiz Score",
       value: `${stats?.avgQuizScore ?? 0}%`,
       change: `${stats?.totalQuizzesAttempted ?? 0} quizzes`,
-      color: "from-violet-500 to-purple-500",
+      color: "linear-gradient(155deg, var(--plum) 0%, color-mix(in srgb, var(--plum) 65%, var(--sage) 35%) 100%)",
     },
     {
       icon: FileText,
       label: "Documents",
       value: `${stats?.totalDocuments ?? 0}`,
       change: `${stats?.trackedDocuments ?? 0} tracked`,
-      color: "from-blue-500 to-cyan-500",
+      color: "linear-gradient(155deg, var(--sky) 0%, color-mix(in srgb, var(--sky) 68%, var(--sage) 32%) 100%)",
     },
     {
       icon: BookOpen,
       label: "Flashcards",
       value: `${stats?.totalFlashcards ?? 0}`,
       change: "Saved for review",
-      color: "from-orange-500 to-red-500",
+      color: "linear-gradient(155deg, var(--amber) 0%, color-mix(in srgb, var(--amber) 70%, var(--rose) 30%) 100%)",
     },
     {
       icon: Flame,
       label: "Study Time",
       value: `${Math.round((stats?.totalStudyTimeSeconds ?? 0) / 60)} min`,
       change: "Across all sessions",
-      color: "from-yellow-500 to-orange-500",
+      color: "linear-gradient(155deg, var(--sage) 0%, color-mix(in srgb, var(--sage) 62%, var(--amber) 38%) 100%)",
     },
   ];
 
@@ -95,9 +95,9 @@ export default function Dashboard() {
             transition={{ delay: index * 0.1 }}
           >
             <GlassCard hover className="p-6 relative overflow-hidden text-left w-full">
-              <div className={`absolute top-0 right-0 w-32 h-32 bg-gradient-to-br ${stat.color} opacity-10 blur-3xl`} />
+              <div className="absolute top-0 right-0 w-32 h-32 opacity-[0.12] blur-3xl" style={{ background: stat.color }} />
               <div className="flex items-start justify-between mb-4 relative z-10">
-                <div className={`w-12 h-12 rounded-2xl bg-gradient-to-br ${stat.color} flex items-center justify-center shadow-lg`}>
+                <div className="w-12 h-12 rounded-2xl flex items-center justify-center shadow-[var(--shadow-soft)]" style={{ background: stat.color }}>
                   <stat.icon className="w-6 h-6 text-white" />
                 </div>
                 <div className="text-sm text-[var(--muted-foreground)] font-medium">{stat.change}</div>
@@ -124,7 +124,7 @@ export default function Dashboard() {
               </div>
               <button
                 onClick={() => navigate("/documents")}
-                className="px-4 py-2 bg-gradient-to-r from-[var(--accent-primary)] to-[var(--accent-secondary)] text-white rounded-xl hover:shadow-lg hover:shadow-[var(--accent-primary)]/20 transition-all"
+                className="px-4 py-2 study-button-primary rounded-xl"
               >
                 View Documents
               </button>
@@ -138,9 +138,9 @@ export default function Dashboard() {
                   <button
                     key={document._id}
                     onClick={() => navigate(`/documents/${document._id}`)}
-                    className="w-full flex items-center gap-4 p-4 rounded-2xl bg-[var(--secondary)]/40 border border-[var(--border)] hover:border-[var(--accent-primary)]/30 text-left transition-colors"
+                    className="w-full flex items-center gap-4 p-4 rounded-2xl study-panel-quiet hover:border-[var(--accent-primary)]/30 text-left transition-colors"
                   >
-                    <div className="w-11 h-11 rounded-2xl bg-gradient-to-br from-[var(--accent-primary)] to-[var(--accent-secondary)] flex items-center justify-center">
+                    <div className="w-11 h-11 rounded-2xl flex items-center justify-center" style={{ background: "linear-gradient(155deg, var(--accent-primary) 0%, color-mix(in srgb, var(--accent-secondary) 62%, var(--accent-primary) 38%) 100%)" }}>
                       <FileText className="w-5 h-5 text-white" />
                     </div>
                     <div className="flex-1 min-w-0">
@@ -168,7 +168,7 @@ export default function Dashboard() {
         >
           <GlassCard className="p-6">
             <div className="flex items-center gap-3 mb-6">
-              <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-red-500 to-orange-500 flex items-center justify-center">
+              <div className="w-10 h-10 rounded-xl flex items-center justify-center" style={{ background: "linear-gradient(155deg, var(--rose) 0%, color-mix(in srgb, var(--amber) 58%, var(--rose) 42%) 100%)" }}>
                 <AlertTriangle className="w-5 h-5 text-white" />
               </div>
               <div>
@@ -194,7 +194,7 @@ export default function Dashboard() {
 
           <GlassCard className="p-6">
             <div className="flex items-center gap-3 mb-6">
-              <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-green-500 to-emerald-500 flex items-center justify-center">
+              <div className="w-10 h-10 rounded-xl flex items-center justify-center" style={{ background: "linear-gradient(155deg, var(--sage) 0%, color-mix(in srgb, var(--sky) 34%, var(--sage) 66%) 100%)" }}>
                 <Brain className="w-5 h-5 text-white" />
               </div>
               <div>

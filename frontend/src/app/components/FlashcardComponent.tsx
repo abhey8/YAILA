@@ -31,23 +31,27 @@ export function FlashcardComponent({
         style={{ transformStyle: "preserve-3d" }}
       >
         <div
-          className="absolute inset-0 bg-gradient-to-br from-indigo-500 to-purple-600 rounded-xl p-6 flex flex-col items-center justify-center text-white shadow-lg"
-          style={{ backfaceVisibility: "hidden" }}
+          className="absolute inset-0 rounded-xl p-6 flex flex-col items-center justify-center text-[var(--primary-foreground)] shadow-[var(--shadow-soft)] border"
+          style={{
+            backfaceVisibility: "hidden",
+            background: "linear-gradient(160deg, color-mix(in srgb, var(--accent-primary) 92%, white 8%) 0%, color-mix(in srgb, var(--accent-secondary) 72%, var(--accent-primary) 28%) 100%)",
+            borderColor: "color-mix(in srgb, var(--accent-primary) 34%, transparent)",
+          }}
         >
-          <div className="text-sm font-medium opacity-80 mb-4">Question</div>
+          <div className="text-sm font-medium opacity-80 mb-4 tracking-wide">Question</div>
           <div className="text-center text-lg font-medium">{front}</div>
           <div className="mt-6 text-sm opacity-70">Click to flip</div>
         </div>
 
         <div
-          className="absolute inset-0 bg-white border-2 border-indigo-300 rounded-xl p-6 flex flex-col items-center justify-center shadow-lg"
+          className="absolute inset-0 study-panel rounded-xl p-6 flex flex-col items-center justify-center"
           style={{ 
             backfaceVisibility: "hidden",
             transform: "rotateY(180deg)" 
           }}
         >
-          <div className="text-sm font-medium text-indigo-600 mb-4">Answer</div>
-          <div className="text-center text-gray-900">{back}</div>
+          <div className="text-sm font-medium text-[var(--accent-primary)] mb-4 tracking-wide">Answer</div>
+          <div className="text-center text-[var(--foreground)] leading-7">{back}</div>
         </div>
       </motion.div>
 
@@ -57,10 +61,10 @@ export function FlashcardComponent({
             e.stopPropagation();
             onToggleFavorite?.(id);
           }}
-          className={`p-2 rounded-lg transition-colors ${
+          className={`p-2 rounded-lg transition-colors border ${
             isFavorite 
-              ? "bg-red-100 text-red-600" 
-              : "bg-gray-100 text-gray-600 hover:bg-red-50 hover:text-red-600"
+              ? "status-weak" 
+              : "study-button-secondary text-[var(--muted-foreground)] hover:text-[var(--weak)]"
           }`}
         >
           <Heart className={`w-5 h-5 ${isFavorite ? "fill-current" : ""}`} />
@@ -70,7 +74,7 @@ export function FlashcardComponent({
             e.stopPropagation();
             onDelete?.(id);
           }}
-          className="p-2 rounded-lg bg-gray-100 text-gray-600 hover:bg-red-50 hover:text-red-600 transition-colors"
+          className="p-2 rounded-lg border study-button-secondary text-[var(--muted-foreground)] hover:text-[var(--weak)]"
         >
           <Trash2 className="w-5 h-5" />
         </button>

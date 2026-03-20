@@ -16,15 +16,15 @@ html {
 }
 
 ::-webkit-scrollbar-track {
-  background: #f1f1f1;
+  background: var(--surface-2);
   border-radius: 10px;
 }
 
 ::-webkit-scrollbar-thumb {
-  background: #c1c1c1;
+  background: color-mix(in srgb, var(--muted-foreground) 38%, var(--surface-3));
   border-radius: 10px;
 }
 
 ::-webkit-scrollbar-thumb:hover {
-  background: #a8a8a8;
+  background: color-mix(in srgb, var(--accent-primary) 28%, var(--surface-3));
 }

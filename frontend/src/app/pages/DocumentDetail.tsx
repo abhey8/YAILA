@@ -209,11 +209,11 @@ export default function DocumentDetail() {
   const pageCount = document?.metadata?.pageCount || 0;
 
   if (isLoadingDocument) {
-    return <div className="max-w-7xl mx-auto text-gray-600 dark:text-gray-400">Loading document...</div>;
+    return <div className="max-w-7xl mx-auto text-[var(--muted-foreground)]">Loading document...</div>;
   }
 
   if (!document) {
-    return <div className="max-w-7xl mx-auto text-red-600">Document not found.</div>;
+    return <div className="max-w-7xl mx-auto text-[var(--weak)]">Document not found.</div>;
   }
 
   return (
@@ -221,32 +221,32 @@ export default function DocumentDetail() {
       <div>
         <button
           onClick={() => navigate("/documents")}
-          className="flex items-center gap-2 text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white mb-4"
+          className="flex items-center gap-2 text-[var(--muted-foreground)] hover:text-[var(--foreground)] mb-4 transition-colors"
         >
           <ArrowLeft className="w-5 h-5" />
           Back to Documents
         </button>
 
         <div className="flex items-start gap-4">
-          <div className="w-12 h-12 bg-indigo-100 rounded-lg flex items-center justify-center flex-shrink-0">
-            <FileText className="w-6 h-6 text-indigo-600" />
+          <div className="w-12 h-12 bg-[var(--accent-soft)] rounded-lg flex items-center justify-center flex-shrink-0 border border-[var(--border)]">
+            <FileText className="w-6 h-6 text-[var(--accent-primary)]" />
           </div>
           <div>
-            <h1 className="text-2xl font-bold text-gray-900 dark:text-white">{document.title || document.originalName}</h1>
-            <p className="text-gray-600 dark:text-gray-400 mt-1">
+            <h1 className="text-2xl font-bold text-[var(--foreground)]">{document.title || document.originalName}</h1>
+            <p className="text-[var(--muted-foreground)] mt-1">
               {pageCount} pages • {formatSize(document.size)} • Uploaded {formatDate(document.createdAt)}
             </p>
-            <p className="text-sm mt-2 text-gray-500 dark:text-gray-400">
+            <p className="text-sm mt-2 text-[var(--muted-foreground)]">
               Status: {document.ingestionStatus}
               {isRefreshingDocument ? " • refreshing..." : ""}
             </p>
             {document.ingestionStatus !== "completed" ? (
-              <p className="text-sm mt-1 text-amber-600 dark:text-amber-400">
+              <p className="text-sm mt-1 text-[var(--warning)]">
                 AI features will unlock after document processing completes.
               </p>
             ) : null}
             {document.ingestionStatus === "failed" ? (
-              <p className="text-sm mt-1 text-red-600 dark:text-red-400">
+              <p className="text-sm mt-1 text-[var(--weak)]">
                 {document.ingestionError || "Document processing failed."}
               </p>
             ) : null}
@@ -254,16 +254,16 @@ export default function DocumentDetail() {
         </div>
       </div>
 
-      <div className="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 overflow-hidden">
-        <div className="border-b border-gray-200 dark:border-gray-700 flex overflow-x-auto">
+      <div className="study-panel rounded-xl overflow-hidden">
+        <div className="border-b border-[var(--border)] flex overflow-x-auto">
           {tabs.map((tab) => (
             <button
               key={tab.id}
               onClick={() => setActiveTab(tab.id as any)}
               className={`flex items-center gap-2 px-6 py-4 font-medium transition-colors whitespace-nowrap ${
                 activeTab === tab.id
-                  ? "text-indigo-600 dark:text-indigo-400 border-b-2 border-indigo-600 dark:border-indigo-400"
-                  : "text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white"
+                  ? "text-[var(--accent-primary)] border-b-2 border-[var(--accent-primary)]"
+                  : "text-[var(--muted-foreground)] hover:text-[var(--foreground)]"
               }`}
             >
               <tab.icon className="w-5 h-5" />
@@ -275,9 +275,9 @@ export default function DocumentDetail() {
         <div className="p-6">
           {activeTab === "chat" && (
             <div className="space-y-4">
-              <div className="h-96 overflow-y-auto space-y-4 p-4 bg-gray-50 dark:bg-gray-700 rounded-lg">
+              <div className="h-96 overflow-y-auto space-y-4 p-4 rounded-lg study-panel-quiet">
                 {!isLoadingHistory && messages.length === 0 && (
-                  <div className="text-gray-600 dark:text-gray-300">
+                  <div className="text-[var(--muted-foreground)]">
                     Ask anything about <span className="font-medium">{document.title || document.originalName}</span>.
                   </div>
                 )}
@@ -294,12 +294,12 @@ export default function DocumentDetail() {
                   onKeyPress={(e) => e.key === "Enter" && handleSendMessage()}
                   placeholder="Ask anything about this document..."
                   disabled={!isDocumentReady}
-                  className="flex-1 px-4 py-3 border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-900 dark:text-white rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                  className="flex-1 px-4 py-3 rounded-lg study-input"
                 />
                 <button
                   onClick={handleSendMessage}
                   disabled={!isDocumentReady}
-                  className="px-6 py-3 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg font-medium transition-colors"
+                  className="px-6 py-3 rounded-lg study-button-primary"
                 >
                   Send
                 </button>
@@ -310,26 +310,26 @@ export default function DocumentDetail() {
           {activeTab === "summary" && (
             <div className="space-y-6">
               <div>
-                <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">Document Summary</h3>
+                <h3 className="text-lg font-semibold text-[var(--foreground)] mb-4">Document Summary</h3>
                 {summary ? (
-                  <div className="p-6 bg-indigo-50 dark:bg-indigo-900/30 rounded-lg border border-indigo-200 dark:border-indigo-800">
-                    <div className="text-gray-800 dark:text-gray-200 leading-relaxed whitespace-pre-wrap">{summary}</div>
+                  <div className="p-6 rounded-lg border border-[var(--accent-primary)]/20 bg-[var(--accent-soft)]">
+                    <div className="text-[var(--foreground-soft)] leading-8 whitespace-pre-wrap">{summary}</div>
                     <button
                       onClick={() => handleGenerateSummary(true)}
                       disabled={isGenerating || !isDocumentReady}
-                      className="mt-4 px-4 py-2 bg-indigo-600 hover:bg-indigo-700 disabled:bg-gray-300 dark:disabled:bg-gray-600 text-white rounded-lg font-medium transition-colors"
+                      className="mt-4 px-4 py-2 rounded-lg study-button-primary"
                     >
                       Regenerate Summary
                     </button>
                   </div>
                 ) : (
                   <div className="text-center py-12">
-                    <Sparkles className="w-12 h-12 text-gray-400 mx-auto mb-4" />
-                    <p className="text-gray-600 dark:text-gray-400 mb-4">Generate an AI-powered summary of this document</p>
+                    <Sparkles className="w-12 h-12 text-[var(--muted-foreground)] mx-auto mb-4" />
+                    <p className="text-[var(--muted-foreground)] mb-4">Generate an AI-powered summary of this document</p>
                     <button
                       onClick={handleGenerateSummary}
                       disabled={isGenerating || !isDocumentReady}
-                      className="px-6 py-3 bg-indigo-600 hover:bg-indigo-700 disabled:bg-gray-300 dark:disabled:bg-gray-600 text-white rounded-lg font-medium transition-colors"
+                      className="px-6 py-3 rounded-lg study-button-primary"
                     >
                       {isGenerating ? "Generating..." : "Generate Summary"}
                     </button>
@@ -338,14 +338,14 @@ export default function DocumentDetail() {
               </div>
 
               <div>
-                <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">Explain a Concept</h3>
+                <h3 className="text-lg font-semibold text-[var(--foreground)] mb-4">Explain a Concept</h3>
                 <div className="flex gap-3">
                   <input
                     type="text"
                     placeholder="Enter a topic from the document..."
-                    className="flex-1 px-4 py-3 border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-900 dark:text-white rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                    className="flex-1 px-4 py-3 rounded-lg study-input"
                   />
-                  <button className="px-6 py-3 bg-purple-600 hover:bg-purple-700 text-white rounded-lg font-medium transition-colors">
+                  <button className="px-6 py-3 rounded-lg study-button-secondary">
                     Explain
                   </button>
                 </div>
@@ -356,20 +356,20 @@ export default function DocumentDetail() {
           {activeTab === "flashcards" && (
             <div className="space-y-6">
               <div className="flex items-center justify-between">
-                <h3 className="text-lg font-semibold text-gray-900 dark:text-white">
+                <h3 className="text-lg font-semibold text-[var(--foreground)]">
                   {flashcards.length} Flashcards
                 </h3>
                 <div className="flex items-center gap-3">
                   <button
                     onClick={() => navigate(`/flashcards/review?documentId=${id}`)}
-                    className="px-4 py-2 bg-white border border-gray-300 text-gray-700 rounded-lg font-medium hover:bg-gray-50 transition-colors"
+                    className="px-4 py-2 rounded-lg study-button-secondary"
                   >
                     Review
                   </button>
                   <button
                     onClick={handleGenerateFlashcards}
                     disabled={isGeneratingFlashcards || !isDocumentReady}
-                    className="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 disabled:bg-gray-300 text-white rounded-lg font-medium transition-colors"
+                    className="px-4 py-2 rounded-lg study-button-primary"
                   >
                     {isGeneratingFlashcards ? "Generating..." : flashcards.length ? "Regenerate" : "Generate"}
                   </button>
@@ -377,7 +377,7 @@ export default function DocumentDetail() {
               </div>
 
               {isLoadingFlashcards ? (
-                <div className="text-gray-600 dark:text-gray-300">Loading flashcards...</div>
+                <div className="text-[var(--muted-foreground)]">Loading flashcards...</div>
               ) : flashcards.length ? (
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                   {flashcards.map((card) => (
@@ -393,7 +393,7 @@ export default function DocumentDetail() {
                   ))}
                 </div>
               ) : (
-                <div className="rounded-xl border border-dashed border-gray-300 dark:border-gray-600 p-8 text-center text-gray-600 dark:text-gray-300">
+                <div className="rounded-xl border border-dashed border-[var(--border)] p-8 text-center text-[var(--muted-foreground)]">
                   No flashcards yet for this document. Generate them from the uploaded content.
                 </div>
               )}
@@ -402,21 +402,21 @@ export default function DocumentDetail() {
 
           {activeTab === "quiz" && (
             <div className="text-center py-12">
-              <Brain className="w-16 h-16 text-indigo-600 dark:text-indigo-400 mx-auto mb-6" />
-              <h3 className="text-2xl font-bold text-gray-900 dark:text-white mb-4">Ready to test your knowledge?</h3>
-              <p className="text-gray-600 dark:text-gray-400 mb-8 max-w-md mx-auto">
+              <Brain className="w-16 h-16 text-[var(--accent-primary)] mx-auto mb-6" />
+              <h3 className="text-2xl font-bold text-[var(--foreground)] mb-4">Ready to test your knowledge?</h3>
+              <p className="text-[var(--muted-foreground)] mb-8 max-w-md mx-auto leading-7">
                 Generate a quiz based on this document and see how well you understand the material
               </p>
               
               <div className="max-w-sm mx-auto space-y-4">
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2 text-left">
+                  <label className="block text-sm font-medium text-[var(--foreground-soft)] mb-2 text-left">
                     Number of Questions
                   </label>
                   <select
                     value={quizCount}
                     onChange={(e) => setQuizCount(e.target.value)}
-                    className="w-full px-4 py-3 border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-900 dark:text-white rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                    className="w-full px-4 py-3 rounded-lg study-input"
                   >
                     <option value="5">5 questions</option>
                     <option value="10">10 questions</option>
@@ -426,10 +426,10 @@ export default function DocumentDetail() {
                 </div>
 
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2 text-left">
+                  <label className="block text-sm font-medium text-[var(--foreground-soft)] mb-2 text-left">
                     Difficulty
                   </label>
-                  <select className="w-full px-4 py-3 border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-900 dark:text-white rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500">
+                  <select className="w-full px-4 py-3 rounded-lg study-input">
                     <option>Easy</option>
                     <option>Medium</option>
                     <option>Hard</option>
@@ -439,7 +439,7 @@ export default function DocumentDetail() {
                 <button
                   onClick={handleStartQuiz}
                   disabled={isGenerating || !isDocumentReady}
-                  className="w-full px-6 py-3 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg font-medium transition-colors"
+                  className="w-full px-6 py-3 rounded-lg study-button-primary"
                 >
                   {isGenerating ? "Generating..." : "Start Quiz"}
                 </button>

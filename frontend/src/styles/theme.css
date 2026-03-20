@@ -2,88 +2,182 @@
 
 :root {
   --font-size: 16px;
-  --background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%);
-  --background-solid: #0f172a;
-  --foreground: #f8fafc;
-  --glass-background: rgba(30, 41, 59, 0.7);
-  --glass-border: rgba(148, 163, 184, 0.1);
-  --accent-gradient: linear-gradient(135deg, #6366f1 0%, #8b5cf6 50%, #a855f7 100%);
-  --accent-primary: #6366f1;
-  --accent-secondary: #8b5cf6;
-  --accent-tertiary: #a855f7;
-  --card: rgba(30, 41, 59, 0.8);
-  --card-foreground: #f8fafc;
-  --popover: rgba(30, 41, 59, 0.95);
-  --popover-foreground: #f8fafc;
-  --primary: #6366f1;
-  --primary-foreground: #ffffff;
-  --secondary: rgba(51, 65, 85, 0.8);
-  --secondary-foreground: #f8fafc;
-  --muted: #475569;
-  --muted-foreground: #94a3b8;
-  --accent: #8b5cf6;
-  --accent-foreground: #ffffff;
-  --destructive: #ef4444;
-  --destructive-foreground: #ffffff;
-  --border: rgba(148, 163, 184, 0.1);
-  --input: rgba(51, 65, 85, 0.5);
-  --input-background: rgba(51, 65, 85, 0.3);
-  --switch-background: #475569;
-  --ring: #6366f1;
-  --chart-1: #6366f1;
-  --chart-2: #8b5cf6;
-  --chart-3: #a855f7;
-  --chart-4: #10b981;
-  --chart-5: #f59e0b;
+
+  /* Core light tokens from the provided study palette */
+  --ink: #1c1b18;
+  --ink-soft: #4a483f;
+  --ink-mute: #7a7869;
+  --page: #fafaf7;
+  --page-tint: #f2f1ec;
+  --page-tint2: #e8e6de;
+  --sage: #3d6b4f;
+  --sage-light: #c8decc;
+  --sage-pale: #ebf3ec;
+  --amber: #b8650a;
+  --amber-light: #f5d49a;
+  --amber-pale: #fdf3e3;
+  --sky: #2b5f8a;
+  --sky-light: #bdd6ee;
+  --sky-pale: #eaf2f9;
+  --rose: #9a3b4b;
+  --rose-light: #f2c4cb;
+  --rose-pale: #fceef0;
+  --plum: #5c3d7a;
+  --plum-light: #d6c5ea;
+  --plum-pale: #f3eef9;
+
+  /* Semantic roles */
+  --background: radial-gradient(circle at top, rgba(232, 230, 222, 0.72) 0%, rgba(250, 250, 247, 0.98) 42%, #fafaf7 100%);
+  --background-solid: var(--page);
+  --foreground: var(--ink);
+  --foreground-soft: var(--ink-soft);
+  --glass-background: rgba(242, 241, 236, 0.82);
+  --glass-border: rgba(122, 120, 105, 0.14);
+  --accent-gradient: linear-gradient(135deg, #3d6b4f 0%, #5c3d7a 100%);
+  --accent-primary: var(--sage);
+  --accent-secondary: var(--plum);
+  --accent-tertiary: var(--amber);
+  --accent-soft: rgba(61, 107, 79, 0.12);
+  --accent-soft-strong: rgba(61, 107, 79, 0.18);
+  --card: rgba(250, 250, 247, 0.88);
+  --card-foreground: var(--ink);
+  --popover: rgba(250, 250, 247, 0.96);
+  --popover-foreground: var(--ink);
+  --primary: var(--sage);
+  --primary-foreground: #f7f6f1;
+  --secondary: rgba(242, 241, 236, 0.92);
+  --secondary-foreground: var(--ink-soft);
+  --muted: var(--page-tint2);
+  --muted-foreground: var(--ink-mute);
+  --accent: var(--sage-pale);
+  --accent-foreground: var(--sage);
+  --destructive: var(--rose);
+  --destructive-foreground: #fff7f7;
+  --success: var(--sage);
+  --success-surface: var(--sage-pale);
+  --warning: var(--amber);
+  --warning-surface: var(--amber-pale);
+  --info: var(--sky);
+  --info-surface: var(--sky-pale);
+  --weak: var(--rose);
+  --weak-surface: var(--rose-pale);
+  --border: rgba(122, 120, 105, 0.16);
+  --input: rgba(232, 230, 222, 0.95);
+  --input-background: rgba(250, 250, 247, 0.92);
+  --switch-background: #cbc7bb;
+  --ring: rgba(61, 107, 79, 0.42);
+  --chart-1: var(--sage);
+  --chart-2: var(--sky);
+  --chart-3: var(--amber);
+  --chart-4: var(--rose);
+  --chart-5: var(--plum);
   --font-weight-medium: 500;
   --font-weight-normal: 400;
   --radius: 1rem;
-  --sidebar: rgba(15, 23, 42, 0.95);
-  --sidebar-foreground: #f8fafc;
-  --sidebar-primary: #6366f1;
-  --sidebar-primary-foreground: #ffffff;
-  --sidebar-accent: rgba(51, 65, 85, 0.5);
-  --sidebar-accent-foreground: #f8fafc;
-  --sidebar-border: rgba(148, 163, 184, 0.1);
-  --sidebar-ring: #6366f1;
+  --shadow-soft: 0 18px 48px rgba(28, 27, 24, 0.08);
+  --shadow-raised: 0 20px 60px rgba(28, 27, 24, 0.12);
+  --surface-1: rgba(250, 250, 247, 0.92);
+  --surface-2: rgba(242, 241, 236, 0.94);
+  --surface-3: rgba(232, 230, 222, 0.92);
+  --hover-tint: rgba(61, 107, 79, 0.08);
+  --active-tint: rgba(61, 107, 79, 0.14);
+  --disabled-bg: rgba(232, 230, 222, 0.72);
+  --disabled-text: rgba(122, 120, 105, 0.9);
+  --sidebar: rgba(242, 241, 236, 0.9);
+  --sidebar-foreground: var(--ink);
+  --sidebar-primary: var(--sage);
+  --sidebar-primary-foreground: #f7f6f1;
+  --sidebar-accent: rgba(61, 107, 79, 0.08);
+  --sidebar-accent-foreground: var(--ink);
+  --sidebar-border: rgba(122, 120, 105, 0.12);
+  --sidebar-ring: rgba(61, 107, 79, 0.36);
 }
 
 .dark {
-  --background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%);
-  --background-solid: #0f172a;
-  --foreground: #f8fafc;
-  --card: rgba(30, 41, 59, 0.8);
-  --card-foreground: #f8fafc;
-  --popover: rgba(30, 41, 59, 0.95);
-  --popover-foreground: #f8fafc;
-  --primary: #6366f1;
-  --primary-foreground: #ffffff;
-  --secondary: rgba(51, 65, 85, 0.8);
-  --secondary-foreground: #f8fafc;
-  --muted: #475569;
-  --muted-foreground: #94a3b8;
-  --accent: #8b5cf6;
-  --accent-foreground: #ffffff;
-  --destructive: #ef4444;
-  --destructive-foreground: #ffffff;
-  --border: rgba(148, 163, 184, 0.1);
-  --input: rgba(51, 65, 85, 0.5);
-  --ring: #6366f1;
-  --font-weight-medium: 500;
-  --font-weight-normal: 400;
-  --chart-1: #6366f1;
-  --chart-2: #8b5cf6;
-  --chart-3: #a855f7;
-  --chart-4: #10b981;
-  --chart-5: #f59e0b;
-  --sidebar: rgba(15, 23, 42, 0.95);
-  --sidebar-foreground: #f8fafc;
-  --sidebar-primary: #6366f1;
-  --sidebar-primary-foreground: #ffffff;
-  --sidebar-accent: rgba(51, 65, 85, 0.5);
-  --sidebar-accent-foreground: #f8fafc;
-  --sidebar-border: rgba(148, 163, 184, 0.1);
-  --sidebar-ring: #6366f1;
+  /* Core dark tokens from the provided study palette */
+  --ink: #f0efe9;
+  --ink-soft: #c8c6bb;
+  --ink-mute: #7a7869;
+  --page: #18181a;
+  --page-tint: #222220;
+  --page-tint2: #2c2c2a;
+  --sage: #7ab892;
+  --sage-light: #2c4c35;
+  --sage-pale: #1e2e22;
+  --amber: #e8a645;
+  --amber-light: #4a3210;
+  --amber-pale: #2a1e08;
+  --sky: #6ba8d4;
+  --sky-light: #1c3448;
+  --sky-pale: #111e2b;
+  --rose: #d48090;
+  --rose-light: #451820;
+  --rose-pale: #2a1218;
+  --plum: #a882cc;
+  --plum-light: #311d44;
+  --plum-pale: #1e1228;
+
+  --background: radial-gradient(circle at top, rgba(44, 76, 53, 0.14) 0%, rgba(24, 24, 26, 0.98) 38%, #18181a 100%);
+  --background-solid: var(--page);
+  --foreground: var(--ink);
+  --foreground-soft: var(--ink-soft);
+  --glass-background: rgba(34, 34, 32, 0.82);
+  --glass-border: rgba(122, 120, 105, 0.12);
+  --accent-gradient: linear-gradient(135deg, #7ab892 0%, #a882cc 100%);
+  --accent-primary: var(--sage);
+  --accent-secondary: var(--plum);
+  --accent-tertiary: var(--amber);
+  --accent-soft: rgba(122, 184, 146, 0.14);
+  --accent-soft-strong: rgba(122, 184, 146, 0.22);
+  --card: rgba(34, 34, 32, 0.84);
+  --card-foreground: var(--ink);
+  --popover: rgba(34, 34, 32, 0.96);
+  --popover-foreground: var(--ink);
+  --primary: var(--sage);
+  --primary-foreground: #132018;
+  --secondary: rgba(44, 44, 42, 0.94);
+  --secondary-foreground: var(--ink-soft);
+  --muted: var(--page-tint2);
+  --muted-foreground: var(--ink-mute);
+  --accent: rgba(30, 46, 34, 0.95);
+  --accent-foreground: var(--sage);
+  --destructive: var(--rose);
+  --destructive-foreground: #fff4f5;
+  --success: var(--sage);
+  --success-surface: var(--sage-pale);
+  --warning: var(--amber);
+  --warning-surface: var(--amber-pale);
+  --info: var(--sky);
+  --info-surface: var(--sky-pale);
+  --weak: var(--rose);
+  --weak-surface: var(--rose-pale);
+  --border: rgba(122, 120, 105, 0.14);
+  --input: rgba(44, 44, 42, 0.92);
+  --input-background: rgba(34, 34, 32, 0.92);
+  --switch-background: #4a483f;
+  --ring: rgba(122, 184, 146, 0.44);
+  --chart-1: var(--sage);
+  --chart-2: var(--sky);
+  --chart-3: var(--amber);
+  --chart-4: var(--rose);
+  --chart-5: var(--plum);
+  --shadow-soft: 0 20px 56px rgba(0, 0, 0, 0.26);
+  --shadow-raised: 0 22px 72px rgba(0, 0, 0, 0.34);
+  --surface-1: rgba(34, 34, 32, 0.88);
+  --surface-2: rgba(44, 44, 42, 0.92);
+  --surface-3: rgba(54, 54, 51, 0.92);
+  --hover-tint: rgba(122, 184, 146, 0.08);
+  --active-tint: rgba(122, 184, 146, 0.16);
+  --disabled-bg: rgba(44, 44, 42, 0.76);
+  --disabled-text: rgba(200, 198, 187, 0.65);
+  --sidebar: rgba(24, 24, 26, 0.92);
+  --sidebar-foreground: var(--ink);
+  --sidebar-primary: var(--sage);
+  --sidebar-primary-foreground: #132018;
+  --sidebar-accent: rgba(122, 184, 146, 0.08);
+  --sidebar-accent-foreground: var(--ink);
+  --sidebar-border: rgba(122, 120, 105, 0.12);
+  --sidebar-ring: rgba(122, 184, 146, 0.3);
 }
 
 @theme inline {
@@ -132,53 +226,164 @@
     @apply border-border outline-ring/50;
   }
 
-  body {
-    @apply bg-background text-foreground;
-  }
-
   html {
     font-size: var(--font-size);
+  }
+
+  body {
+    background: var(--background);
+    color: var(--foreground);
   }
 
   h1 {
     font-size: var(--text-2xl);
     font-weight: var(--font-weight-medium);
-    line-height: 1.5;
+    line-height: 1.35;
   }
 
   h2 {
     font-size: var(--text-xl);
     font-weight: var(--font-weight-medium);
-    line-height: 1.5;
+    line-height: 1.4;
   }
 
   h3 {
     font-size: var(--text-lg);
     font-weight: var(--font-weight-medium);
-    line-height: 1.5;
+    line-height: 1.45;
   }
 
-  h4 {
-    font-size: var(--text-base);
-    font-weight: var(--font-weight-medium);
-    line-height: 1.5;
-  }
-
-  label {
-    font-size: var(--text-base);
-    font-weight: var(--font-weight-medium);
-    line-height: 1.5;
-  }
-
+  h4,
+  label,
   button {
     font-size: var(--text-base);
     font-weight: var(--font-weight-medium);
-    line-height: 1.5;
+    line-height: 1.45;
   }
 
-  input {
+  input,
+  textarea,
+  select {
     font-size: var(--text-base);
     font-weight: var(--font-weight-normal);
     line-height: 1.5;
+  }
+}
+
+@layer components {
+  .study-panel {
+    background: var(--surface-1);
+    border: 1px solid var(--border);
+    box-shadow: var(--shadow-soft);
+  }
+
+  .study-panel-quiet {
+    background: var(--surface-2);
+    border: 1px solid var(--border);
+  }
+
+  .study-card-hover {
+    transition: background-color 180ms ease, border-color 180ms ease, box-shadow 180ms ease, transform 180ms ease;
+  }
+
+  .study-card-hover:hover {
+    background: color-mix(in srgb, var(--surface-1) 88%, var(--hover-tint));
+    border-color: color-mix(in srgb, var(--border) 70%, var(--accent-primary) 30%);
+    box-shadow: var(--shadow-raised);
+  }
+
+  .study-input {
+    background: var(--input-background);
+    border: 1px solid var(--border);
+    color: var(--foreground);
+    transition: border-color 180ms ease, box-shadow 180ms ease, background-color 180ms ease;
+  }
+
+  .study-input::placeholder {
+    color: var(--muted-foreground);
+  }
+
+  .study-input:focus {
+    outline: none;
+    border-color: color-mix(in srgb, var(--accent-primary) 72%, var(--border));
+    box-shadow: 0 0 0 4px color-mix(in srgb, var(--accent-primary) 18%, transparent);
+  }
+
+  .study-button-primary {
+    background: var(--accent-gradient);
+    color: #fffdf8;
+    box-shadow: 0 14px 30px color-mix(in srgb, var(--accent-primary) 16%, transparent);
+    transition: transform 180ms ease, box-shadow 180ms ease, filter 180ms ease, opacity 180ms ease;
+  }
+
+  .study-button-primary:hover {
+    filter: saturate(1.04) brightness(1.02);
+    box-shadow: 0 18px 36px color-mix(in srgb, var(--accent-primary) 20%, transparent);
+  }
+
+  .study-button-primary:active {
+    transform: translateY(1px);
+    box-shadow: 0 10px 22px color-mix(in srgb, var(--accent-primary) 14%, transparent);
+  }
+
+  .study-button-primary:disabled {
+    background: var(--disabled-bg);
+    color: var(--disabled-text);
+    box-shadow: none;
+  }
+
+  .study-button-secondary {
+    background: var(--surface-2);
+    color: var(--foreground);
+    border: 1px solid var(--border);
+    transition: background-color 180ms ease, border-color 180ms ease, color 180ms ease;
+  }
+
+  .study-button-secondary:hover {
+    background: color-mix(in srgb, var(--surface-2) 84%, var(--hover-tint));
+    border-color: color-mix(in srgb, var(--border) 68%, var(--accent-primary) 32%);
+  }
+
+  .study-button-secondary:disabled {
+    background: var(--disabled-bg);
+    color: var(--disabled-text);
+  }
+
+  .study-chip {
+    background: var(--accent-soft);
+    color: var(--accent-primary);
+    border: 1px solid color-mix(in srgb, var(--accent-primary) 28%, transparent);
+  }
+
+  .study-separator {
+    border-color: var(--border);
+  }
+
+  .study-prose {
+    color: var(--foreground-soft);
+  }
+
+  .status-success {
+    background: var(--success-surface);
+    color: var(--success);
+    border: 1px solid color-mix(in srgb, var(--success) 26%, transparent);
+  }
+
+  .status-warning {
+    background: var(--warning-surface);
+    color: var(--warning);
+    border: 1px solid color-mix(in srgb, var(--warning) 26%, transparent);
+  }
+
+  .status-info {
+    background: var(--info-surface);
+    color: var(--info);
+    border: 1px solid color-mix(in srgb, var(--info) 26%, transparent);
+  }
+
+  .status-weak {
+    background: var(--weak-surface);
+    color: var(--weak);
+    border: 1px solid color-mix(in srgb, var(--weak) 24%, transparent);
   }
 }
