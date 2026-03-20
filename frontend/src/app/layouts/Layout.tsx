@@ -1,8 +1,8 @@
-import { Outlet, useNavigate, useLocation, Navigate } from "react-router";
+import { Navigate, Outlet, useLocation, useNavigate } from "react-router";
+import { useState } from "react";
 import { Sidebar } from "../components/Sidebar";
 import { TopBar } from "../components/TopBar";
 import { UploadButton } from "../components/UploadButton";
-import { useState } from "react";
 import { UploadModal } from "../components/UploadModal";
 import { useAuth } from "../context/AuthContext";
 
@@ -16,7 +16,7 @@ export function Layout() {
   const location = useLocation();
 
   if (isLoading) {
-    return <div className="flex h-screen items-center justify-center dark:bg-gray-900 bg-gray-50 text-indigo-600">Loading...</div>;
+    return <div className="flex h-screen items-center justify-center bg-[var(--background-solid)] text-[var(--accent-primary)]">Loading...</div>;
   }
 
   if (!token) {
@@ -31,26 +31,29 @@ export function Layout() {
   };
 
   return (
-    <div className="flex h-screen bg-gray-50 dark:bg-gray-900">
+    <div className="flex h-screen bg-gradient-to-br from-slate-950 via-slate-900 to-slate-950 relative overflow-hidden">
+      <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top_right,_var(--accent-primary)_0%,_transparent_50%)] opacity-10" />
+      <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_bottom_left,_var(--accent-secondary)_0%,_transparent_50%)] opacity-10" />
+
       <Sidebar isOpen={isSidebarOpen} onToggle={() => setIsSidebarOpen(!isSidebarOpen)} />
-      
-      <div className="flex-1 flex flex-col overflow-hidden">
-        <TopBar 
-          onSearch={handleSearch} 
+
+      <div className="flex-1 flex flex-col overflow-hidden relative z-10">
+        <TopBar
+          onSearch={handleSearch}
           onMenuClick={() => setIsSidebarOpen(!isSidebarOpen)}
           isSidebarOpen={isSidebarOpen}
         />
-        
+
         <main className="flex-1 overflow-y-auto p-6">
           <Outlet context={{ searchQuery, refreshKey }} />
         </main>
       </div>
 
       <UploadButton onClick={() => setIsUploadModalOpen(true)} />
-      <UploadModal 
-        isOpen={isUploadModalOpen} 
+      <UploadModal
+        isOpen={isUploadModalOpen}
         onClose={() => setIsUploadModalOpen(false)}
-        onSuccess={() => setRefreshKey(prev => prev + 1)}
+        onSuccess={() => setRefreshKey((previous) => previous + 1)}
       />
     </div>
   );

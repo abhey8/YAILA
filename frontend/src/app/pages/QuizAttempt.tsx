@@ -29,7 +29,6 @@ export default function QuizAttempt() {
       }
       setLoading(false);
     }).catch(err => {
-      console.error(err);
       setLoading(false);
     });
   }, [id]);
@@ -78,7 +77,6 @@ export default function QuizAttempt() {
       const result = await quizApi.submitAttempt(id, payload);
       navigate(`/quiz/${id}/result`, { state: result });
     } catch (error) {
-      console.error("Failed to submit quiz attempt", error);
     }
   };
 

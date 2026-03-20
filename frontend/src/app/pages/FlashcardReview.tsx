@@ -25,7 +25,6 @@ export default function FlashcardReview() {
           : await flashcardApi.getFavorites();
         setFlashcards(data || []);
       } catch (error) {
-        console.error("Failed to load flashcards", error);
         toast.error("Failed to load flashcards");
       } finally {
         setLoading(false);
@@ -61,7 +60,6 @@ export default function FlashcardReview() {
         current.map((card) => (card._id === flashcardId ? updated : card))
       );
     } catch (error) {
-      console.error("Failed to update favorite", error);
       toast.error("Failed to update flashcard");
     }
   };
@@ -70,7 +68,6 @@ export default function FlashcardReview() {
     try {
       await flashcardApi.delete(flashcardId);
     } catch (error) {
-      console.error("Failed to delete flashcard", error);
       toast.error("Failed to delete flashcard");
       return;
     }

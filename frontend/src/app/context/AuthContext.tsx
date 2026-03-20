@@ -39,7 +39,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         });
         setUser(response.data);
       } catch (error) {
-        console.error("Failed to fetch profile", error);
         localStorage.removeItem('token');
         setToken(null);
       } finally {

@@ -58,7 +58,6 @@ export default function DocumentDetail() {
         const flashcardData = await flashcardApi.getByDocument(id);
         setFlashcards(flashcardData || []);
       } catch (error) {
-        console.error("Failed to load document workspace", error);
         toast.error("Failed to load this document");
       } finally {
         setIsLoadingDocument(false);
@@ -98,7 +97,6 @@ export default function DocumentDetail() {
           toast.error(latest.ingestionError || "Document processing failed");
         }
       } catch (error) {
-        console.error("Failed to refresh ingestion status", error);
       } finally {
         setIsRefreshingDocument(false);
       }
@@ -141,7 +139,6 @@ export default function DocumentDetail() {
       const response = await aiApi.getSummary(id, regenerate);
       setSummary(response.summary || "");
     } catch (error) {
-      console.error("Failed to generate summary", error);
       toast.error("Failed to generate summary");
     } finally {
       setIsGenerating(false);
@@ -158,7 +155,6 @@ export default function DocumentDetail() {
         toast.success("Flashcards generated from this document");
       })
       .catch((error) => {
-        console.error("Failed to generate flashcards", error);
         toast.error("Failed to generate flashcards");
       })
       .finally(() => {
@@ -173,7 +169,6 @@ export default function DocumentDetail() {
         current.map((card) => (card._id === flashcardId ? updated : card))
       );
     } catch (error) {
-      console.error("Failed to update flashcard favorite", error);
       toast.error("Failed to update flashcard");
     }
   };
@@ -184,7 +179,6 @@ export default function DocumentDetail() {
       setFlashcards((current) => current.filter((card) => card._id !== flashcardId));
       toast.success("Flashcard deleted");
     } catch (error) {
-      console.error("Failed to delete flashcard", error);
       toast.error("Failed to delete flashcard");
     }
   };

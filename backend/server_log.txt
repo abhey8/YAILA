@@ -313,3 +313,346 @@ Batch Embedding failed: ai.models.batchEmbedContents is not a function
 {"level":"info","message":"Connected to MongoDB","mode":"configured-instance","timestamp":"2026-03-19T19:17:28.129Z"}
 {"level":"info","message":"Server started","port":5001,"timestamp":"2026-03-19T19:17:28.145Z"}
 [31m[nodemon] app crashed - waiting for file changes before starting...[39m
+[32m[nodemon] restarting due to changes...[39m
+[32m[nodemon] starting `node server.js`[39m
+[dotenv@17.3.1] injecting env (7) from .env -- tip: 🔐 prevent building .env in docker: https://dotenvx.com/prebuild
+{"level":"info","message":"Connected to MongoDB","mode":"configured-instance","timestamp":"2026-03-20T06:27:13.170Z"}
+{"level":"info","message":"Server started","port":5001,"timestamp":"2026-03-20T06:27:13.203Z"}
+[32m[nodemon] restarting due to changes...[39m
+[32m[nodemon] starting `node server.js`[39m
+[dotenv@17.3.1] injecting env (7) from .env -- tip: ⚙️  load multiple .env files with { path: ['.env.local', '.env'] }
+{"level":"info","message":"Connected to MongoDB","mode":"configured-instance","timestamp":"2026-03-20T06:36:03.834Z"}
+{"level":"info","message":"Server started","port":5001,"timestamp":"2026-03-20T06:36:03.857Z"}
+{"level":"warn","message":"Roadmap refresh failed","documentId":"69bbce7e7271b388314dae1a","error":"Knowledge graph not available for this document","timestamp":"2026-03-20T07:41:31.531Z"}
+{"level":"warn","message":"Roadmap refresh failed","documentId":"69bbcec77271b388314dae53","error":"Knowledge graph not available for this document","timestamp":"2026-03-20T07:41:31.860Z"}
+{"level":"warn","message":"Roadmap refresh failed","documentId":"69bbcf9d7271b388314daed6","error":"Knowledge graph not available for this document","timestamp":"2026-03-20T07:41:32.172Z"}
+{"level":"warn","message":"Roadmap refresh failed","documentId":"69bbd06f7271b388314daf19","error":"Knowledge graph not available for this document","timestamp":"2026-03-20T07:41:32.224Z"}
+{"level":"warn","message":"Roadmap refresh failed","documentId":"69bbd0da2ef4f5cea1889ea5","error":"Knowledge graph not available for this document","timestamp":"2026-03-20T07:41:32.332Z"}
+{"level":"error","message":"Error in roadmap regeneration job","error":"read ECONNRESET","timestamp":"2026-03-20T09:09:05.210Z"}
+{"level":"error","message":"Error in roadmap regeneration job","error":"getaddrinfo ENOTFOUND ac-gye9uaa-shard-00-02.ckekjhr.mongodb.net","timestamp":"2026-03-20T09:57:48.500Z"}
+{"level":"warn","message":"Roadmap refresh failed","documentId":"69bbce7e7271b388314dae1a","error":"Knowledge graph not available for this document","timestamp":"2026-03-20T10:57:48.155Z"}
+{"level":"warn","message":"Roadmap refresh failed","documentId":"69bbcec77271b388314dae53","error":"Knowledge graph not available for this document","timestamp":"2026-03-20T10:57:48.250Z"}
+{"level":"warn","message":"Roadmap refresh failed","documentId":"69bbcf9d7271b388314daed6","error":"Knowledge graph not available for this document","timestamp":"2026-03-20T10:57:48.319Z"}
+{"level":"warn","message":"Roadmap refresh failed","documentId":"69bbd06f7271b388314daf19","error":"Knowledge graph not available for this document","timestamp":"2026-03-20T10:57:48.419Z"}
+{"level":"warn","message":"Roadmap refresh failed","documentId":"69bbd0da2ef4f5cea1889ea5","error":"Knowledge graph not available for this document","timestamp":"2026-03-20T10:57:48.506Z"}
+{"level":"warn","message":"Roadmap refresh failed","documentId":"69bbce7e7271b388314dae1a","error":"Knowledge graph not available for this document","timestamp":"2026-03-20T11:57:47.882Z"}
+{"level":"warn","message":"Roadmap refresh failed","documentId":"69bbcec77271b388314dae53","error":"Knowledge graph not available for this document","timestamp":"2026-03-20T11:57:47.952Z"}
+{"level":"warn","message":"Roadmap refresh failed","documentId":"69bbcf9d7271b388314daed6","error":"Knowledge graph not available for this document","timestamp":"2026-03-20T11:57:48.055Z"}
+{"level":"warn","message":"Roadmap refresh failed","documentId":"69bbd06f7271b388314daf19","error":"Knowledge graph not available for this document","timestamp":"2026-03-20T11:57:48.128Z"}
+{"level":"warn","message":"Roadmap refresh failed","documentId":"69bbd0da2ef4f5cea1889ea5","error":"Knowledge graph not available for this document","timestamp":"2026-03-20T11:57:48.194Z"}
+{"level":"warn","message":"Roadmap refresh failed","documentId":"69bbce7e7271b388314dae1a","error":"Knowledge graph not available for this document","timestamp":"2026-03-20T12:57:47.550Z"}
+{"level":"warn","message":"Roadmap refresh failed","documentId":"69bbcec77271b388314dae53","error":"Knowledge graph not available for this document","timestamp":"2026-03-20T12:57:47.643Z"}
+{"level":"warn","message":"Roadmap refresh failed","documentId":"69bbcf9d7271b388314daed6","error":"Knowledge graph not available for this document","timestamp":"2026-03-20T12:57:47.713Z"}
+{"level":"warn","message":"Roadmap refresh failed","documentId":"69bbd06f7271b388314daf19","error":"Knowledge graph not available for this document","timestamp":"2026-03-20T12:57:47.786Z"}
+{"level":"warn","message":"Roadmap refresh failed","documentId":"69bbd0da2ef4f5cea1889ea5","error":"Knowledge graph not available for this document","timestamp":"2026-03-20T12:57:47.852Z"}
+{"level":"warn","message":"Roadmap refresh failed","documentId":"69bbce7e7271b388314dae1a","error":"Knowledge graph not available for this document","timestamp":"2026-03-20T13:57:47.917Z"}
+{"level":"warn","message":"Roadmap refresh failed","documentId":"69bbcec77271b388314dae53","error":"Knowledge graph not available for this document","timestamp":"2026-03-20T13:57:48.002Z"}
+{"level":"warn","message":"Roadmap refresh failed","documentId":"69bbcf9d7271b388314daed6","error":"Knowledge graph not available for this document","timestamp":"2026-03-20T13:57:48.072Z"}
+{"level":"warn","message":"Roadmap refresh failed","documentId":"69bbd06f7271b388314daf19","error":"Knowledge graph not available for this document","timestamp":"2026-03-20T13:57:48.142Z"}
+{"level":"warn","message":"Roadmap refresh failed","documentId":"69bbd0da2ef4f5cea1889ea5","error":"Knowledge graph not available for this document","timestamp":"2026-03-20T13:57:48.207Z"}
+{"level":"warn","message":"Roadmap refresh failed","documentId":"69bbce7e7271b388314dae1a","error":"Knowledge graph not available for this document","timestamp":"2026-03-20T15:02:35.815Z"}
+{"level":"warn","message":"Roadmap refresh failed","documentId":"69bbcec77271b388314dae53","error":"Knowledge graph not available for this document","timestamp":"2026-03-20T15:02:35.842Z"}
+{"level":"warn","message":"Roadmap refresh failed","documentId":"69bbcf9d7271b388314daed6","error":"Knowledge graph not available for this document","timestamp":"2026-03-20T15:02:35.861Z"}
+{"level":"warn","message":"Roadmap refresh failed","documentId":"69bbd06f7271b388314daf19","error":"Knowledge graph not available for this document","timestamp":"2026-03-20T15:02:35.879Z"}
+{"level":"warn","message":"Roadmap refresh failed","documentId":"69bbd0da2ef4f5cea1889ea5","error":"Knowledge graph not available for this document","timestamp":"2026-03-20T15:02:35.896Z"}
+{"level":"error","message":"Error in roadmap regeneration job","error":"connection <monitor> to 159.41.170.34:27017 timed out","timestamp":"2026-03-20T16:20:12.936Z"}
+{"level":"error","message":"Error in roadmap regeneration job","error":"connection <monitor> to 159.41.170.34:27017 timed out","timestamp":"2026-03-20T17:26:21.585Z"}
+{"level":"error","message":"Error in roadmap regeneration job","error":"Connection to ac-gye9uaa-shard-00-02.ckekjhr.mongodb.net:27017 interrupted due to server monitor timeout","timestamp":"2026-03-20T18:32:32.782Z"}
+{"level":"warn","message":"Roadmap refresh failed","documentId":"69bbce7e7271b388314dae1a","error":"Knowledge graph not available for this document","timestamp":"2026-03-20T19:27:24.985Z"}
+{"level":"warn","message":"Roadmap refresh failed","documentId":"69bbcec77271b388314dae53","error":"Knowledge graph not available for this document","timestamp":"2026-03-20T19:27:25.017Z"}
+{"level":"warn","message":"Roadmap refresh failed","documentId":"69bbcf9d7271b388314daed6","error":"Knowledge graph not available for this document","timestamp":"2026-03-20T19:27:25.050Z"}
+{"level":"warn","message":"Roadmap refresh failed","documentId":"69bbd06f7271b388314daf19","error":"Knowledge graph not available for this document","timestamp":"2026-03-20T19:27:25.074Z"}
+{"level":"warn","message":"Roadmap refresh failed","documentId":"69bbd0da2ef4f5cea1889ea5","error":"Knowledge graph not available for this document","timestamp":"2026-03-20T19:27:25.100Z"}
+{"level":"warn","message":"Roadmap refresh failed","documentId":"69bbce7e7271b388314dae1a","error":"Knowledge graph not available for this document","timestamp":"2026-03-20T20:27:22.513Z"}
+{"level":"warn","message":"Roadmap refresh failed","documentId":"69bbcec77271b388314dae53","error":"Knowledge graph not available for this document","timestamp":"2026-03-20T20:27:22.541Z"}
+{"level":"warn","message":"Roadmap refresh failed","documentId":"69bbcf9d7271b388314daed6","error":"Knowledge graph not available for this document","timestamp":"2026-03-20T20:27:22.571Z"}
+{"level":"warn","message":"Roadmap refresh failed","documentId":"69bbd06f7271b388314daf19","error":"Knowledge graph not available for this document","timestamp":"2026-03-20T20:27:22.590Z"}
+{"level":"warn","message":"Roadmap refresh failed","documentId":"69bbd0da2ef4f5cea1889ea5","error":"Knowledge graph not available for this document","timestamp":"2026-03-20T20:27:22.624Z"}
+[32m[nodemon] restarting due to changes...[39m
+[32m[nodemon] restarting due to changes...[39m
+[32m[nodemon] restarting due to changes...[39m
+[32m[nodemon] restarting due to changes...[39m
+[32m[nodemon] restarting due to changes...[39m
+[32m[nodemon] restarting due to changes...[39m
+[32m[nodemon] restarting due to changes...[39m
+[32m[nodemon] restarting due to changes...[39m
+[32m[nodemon] restarting due to changes...[39m
+[32m[nodemon] restarting due to changes...[39m
+[32m[nodemon] restarting due to changes...[39m
+[32m[nodemon] restarting due to changes...[39m
+[32m[nodemon] restarting due to changes...[39m
+[32m[nodemon] restarting due to changes...[39m
+[32m[nodemon] restarting due to changes...[39m
+[32m[nodemon] restarting due to changes...[39m
+[32m[nodemon] restarting due to changes...[39m
+[32m[nodemon] restarting due to changes...[39m
+[32m[nodemon] restarting due to changes...[39m
+[32m[nodemon] restarting due to changes...[39m
+[32m[nodemon] restarting due to changes...[39m
+[32m[nodemon] restarting due to changes...[39m
+[32m[nodemon] restarting due to changes...[39m
+[32m[nodemon] restarting due to changes...[39m
+[32m[nodemon] restarting due to changes...[39m
+[32m[nodemon] restarting due to changes...[39m
+[32m[nodemon] restarting due to changes...[39m
+[32m[nodemon] restarting due to changes...[39m
+[32m[nodemon] restarting due to changes...[39m
+[32m[nodemon] restarting due to changes...[39m
+[32m[nodemon] restarting due to changes...[39m
+[32m[nodemon] restarting due to changes...[39m
+[32m[nodemon] restarting due to changes...[39m
+[32m[nodemon] restarting due to changes...[39m
+[32m[nodemon] restarting due to changes...[39m
+[32m[nodemon] restarting due to changes...[39m
+[32m[nodemon] restarting due to changes...[39m
+[32m[nodemon] restarting due to changes...[39m
+[32m[nodemon] restarting due to changes...[39m
+[32m[nodemon] restarting due to changes...[39m
+[32m[nodemon] restarting due to changes...[39m
+[32m[nodemon] restarting due to changes...[39m
+[32m[nodemon] restarting due to changes...[39m
+[32m[nodemon] restarting due to changes...[39m
+[32m[nodemon] restarting due to changes...[39m
+[32m[nodemon] restarting due to changes...[39m
+[32m[nodemon] restarting due to changes...[39m
+[32m[nodemon] restarting due to changes...[39m
+[32m[nodemon] restarting due to changes...[39m
+[32m[nodemon] restarting due to changes...[39m
+[32m[nodemon] restarting due to changes...[39m
+[32m[nodemon] restarting due to changes...[39m
+[32m[nodemon] restarting due to changes...[39m
+[32m[nodemon] restarting due to changes...[39m
+[32m[nodemon] restarting due to changes...[39m
+[32m[nodemon] restarting due to changes...[39m
+[32m[nodemon] restarting due to changes...[39m
+[32m[nodemon] restarting due to changes...[39m
+[32m[nodemon] restarting due to changes...[39m
+[32m[nodemon] restarting due to changes...[39m
+[32m[nodemon] restarting due to changes...[39m
+[32m[nodemon] restarting due to changes...[39m
+[32m[nodemon] restarting due to changes...[39m
+[32m[nodemon] restarting due to changes...[39m
+[32m[nodemon] restarting due to changes...[39m
+[32m[nodemon] restarting due to changes...[39m
+[32m[nodemon] restarting due to changes...[39m
+[32m[nodemon] restarting due to changes...[39m
+[32m[nodemon] starting `node server.js`[39m
+[dotenv@17.3.1] injecting env (7) from .env -- tip: 🛠️  run anywhere with `dotenvx run -- yourcommand`
+{"level":"info","message":"Connected to MongoDB","mode":"configured-instance","timestamp":"2026-03-20T20:29:50.526Z"}
+{"level":"info","message":"Server started","port":5001,"timestamp":"2026-03-20T20:29:50.538Z"}
+[32m[nodemon] restarting due to changes...[39m
+[32m[nodemon] restarting due to changes...[39m
+[32m[nodemon] restarting due to changes...[39m
+[32m[nodemon] restarting due to changes...[39m
+[32m[nodemon] restarting due to changes...[39m
+[32m[nodemon] restarting due to changes...[39m
+[32m[nodemon] restarting due to changes...[39m
+[32m[nodemon] restarting due to changes...[39m
+[32m[nodemon] restarting due to changes...[39m
+[32m[nodemon] restarting due to changes...[39m
+[32m[nodemon] restarting due to changes...[39m
+[32m[nodemon] restarting due to changes...[39m
+[32m[nodemon] restarting due to changes...[39m
+[32m[nodemon] restarting due to changes...[39m
+[32m[nodemon] restarting due to changes...[39m
+[32m[nodemon] restarting due to changes...[39m
+[32m[nodemon] restarting due to changes...[39m
+[32m[nodemon] restarting due to changes...[39m
+[32m[nodemon] restarting due to changes...[39m
+[32m[nodemon] restarting due to changes...[39m
+[32m[nodemon] restarting due to changes...[39m
+[32m[nodemon] restarting due to changes...[39m
+[32m[nodemon] restarting due to changes...[39m
+[32m[nodemon] restarting due to changes...[39m
+[32m[nodemon] restarting due to changes...[39m
+[32m[nodemon] restarting due to changes...[39m
+[32m[nodemon] restarting due to changes...[39m
+[32m[nodemon] restarting due to changes...[39m
+[32m[nodemon] restarting due to changes...[39m
+[32m[nodemon] restarting due to changes...[39m
+[32m[nodemon] restarting due to changes...[39m
+[32m[nodemon] restarting due to changes...[39m
+[32m[nodemon] restarting due to changes...[39m
+[32m[nodemon] restarting due to changes...[39m
+[32m[nodemon] restarting due to changes...[39m
+[32m[nodemon] restarting due to changes...[39m
+[32m[nodemon] restarting due to changes...[39m
+[32m[nodemon] restarting due to changes...[39m
+[32m[nodemon] restarting due to changes...[39m
+[32m[nodemon] restarting due to changes...[39m
+[32m[nodemon] restarting due to changes...[39m
+[32m[nodemon] restarting due to changes...[39m
+[32m[nodemon] restarting due to changes...[39m
+[32m[nodemon] restarting due to changes...[39m
+[32m[nodemon] restarting due to changes...[39m
+[32m[nodemon] restarting due to changes...[39m
+[32m[nodemon] restarting due to changes...[39m
+[32m[nodemon] restarting due to changes...[39m
+[32m[nodemon] restarting due to changes...[39m
+[32m[nodemon] restarting due to changes...[39m
+[32m[nodemon] restarting due to changes...[39m
+[32m[nodemon] restarting due to changes...[39m
+[32m[nodemon] restarting due to changes...[39m
+[32m[nodemon] restarting due to changes...[39m
+[32m[nodemon] restarting due to changes...[39m
+[32m[nodemon] restarting due to changes...[39m
+[32m[nodemon] restarting due to changes...[39m
+[32m[nodemon] restarting due to changes...[39m
+[32m[nodemon] restarting due to changes...[39m
+[32m[nodemon] restarting due to changes...[39m
+[32m[nodemon] restarting due to changes...[39m
+[32m[nodemon] restarting due to changes...[39m
+[32m[nodemon] restarting due to changes...[39m
+[32m[nodemon] restarting due to changes...[39m
+[32m[nodemon] restarting due to changes...[39m
+[32m[nodemon] restarting due to changes...[39m
+[32m[nodemon] restarting due to changes...[39m
+[32m[nodemon] restarting due to changes...[39m
+[32m[nodemon] starting `node server.js`[39m
+[dotenv@17.3.1] injecting env (7) from .env -- tip: ⚙️  write to custom object with { processEnv: myObject }
+{"level":"info","message":"Connected to MongoDB","mode":"configured-instance","timestamp":"2026-03-20T20:30:10.592Z"}
+{"level":"info","message":"Server started","port":5001,"timestamp":"2026-03-20T20:30:10.602Z"}
+[32m[nodemon] restarting due to changes...[39m
+[32m[nodemon] restarting due to changes...[39m
+[32m[nodemon] restarting due to changes...[39m
+[32m[nodemon] restarting due to changes...[39m
+[32m[nodemon] restarting due to changes...[39m
+[32m[nodemon] restarting due to changes...[39m
+[32m[nodemon] restarting due to changes...[39m
+[32m[nodemon] restarting due to changes...[39m
+[32m[nodemon] restarting due to changes...[39m
+[32m[nodemon] restarting due to changes...[39m
+[32m[nodemon] restarting due to changes...[39m
+[32m[nodemon] restarting due to changes...[39m
+[32m[nodemon] restarting due to changes...[39m
+[32m[nodemon] restarting due to changes...[39m
+[32m[nodemon] restarting due to changes...[39m
+[32m[nodemon] restarting due to changes...[39m
+[32m[nodemon] restarting due to changes...[39m
+[32m[nodemon] restarting due to changes...[39m
+[32m[nodemon] restarting due to changes...[39m
+[32m[nodemon] restarting due to changes...[39m
+[32m[nodemon] restarting due to changes...[39m
+[32m[nodemon] restarting due to changes...[39m
+[32m[nodemon] restarting due to changes...[39m
+[32m[nodemon] restarting due to changes...[39m
+[32m[nodemon] restarting due to changes...[39m
+[32m[nodemon] restarting due to changes...[39m
+[32m[nodemon] restarting due to changes...[39m
+[32m[nodemon] restarting due to changes...[39m
+[32m[nodemon] restarting due to changes...[39m
+[32m[nodemon] restarting due to changes...[39m
+[32m[nodemon] restarting due to changes...[39m
+[32m[nodemon] restarting due to changes...[39m
+[32m[nodemon] restarting due to changes...[39m
+[32m[nodemon] restarting due to changes...[39m
+[32m[nodemon] restarting due to changes...[39m
+[32m[nodemon] restarting due to changes...[39m
+[32m[nodemon] restarting due to changes...[39m
+[32m[nodemon] restarting due to changes...[39m
+[32m[nodemon] restarting due to changes...[39m
+[32m[nodemon] restarting due to changes...[39m
+[32m[nodemon] restarting due to changes...[39m
+[32m[nodemon] restarting due to changes...[39m
+[32m[nodemon] restarting due to changes...[39m
+[32m[nodemon] restarting due to changes...[39m
+[32m[nodemon] restarting due to changes...[39m
+[32m[nodemon] restarting due to changes...[39m
+[32m[nodemon] restarting due to changes...[39m
+[32m[nodemon] restarting due to changes...[39m
+[32m[nodemon] restarting due to changes...[39m
+[32m[nodemon] restarting due to changes...[39m
+[32m[nodemon] restarting due to changes...[39m
+[32m[nodemon] restarting due to changes...[39m
+[32m[nodemon] restarting due to changes...[39m
+[32m[nodemon] restarting due to changes...[39m
+[32m[nodemon] restarting due to changes...[39m
+[32m[nodemon] restarting due to changes...[39m
+[32m[nodemon] restarting due to changes...[39m
+[32m[nodemon] restarting due to changes...[39m
+[32m[nodemon] restarting due to changes...[39m
+[32m[nodemon] restarting due to changes...[39m
+[32m[nodemon] restarting due to changes...[39m
+[32m[nodemon] restarting due to changes...[39m
+[32m[nodemon] restarting due to changes...[39m
+[32m[nodemon] restarting due to changes...[39m
+[32m[nodemon] restarting due to changes...[39m
+[32m[nodemon] restarting due to changes...[39m
+[32m[nodemon] restarting due to changes...[39m
+[32m[nodemon] restarting due to changes...[39m
+[32m[nodemon] starting `node server.js`[39m
+[dotenv@17.3.1] injecting env (7) from .env -- tip: 🔐 encrypt with Dotenvx: https://dotenvx.com
+{"level":"info","message":"Connected to MongoDB","mode":"configured-instance","timestamp":"2026-03-20T20:30:33.164Z"}
+{"level":"info","message":"Server started","port":5001,"timestamp":"2026-03-20T20:30:33.181Z"}
+[32m[nodemon] restarting due to changes...[39m
+[32m[nodemon] restarting due to changes...[39m
+[32m[nodemon] restarting due to changes...[39m
+[32m[nodemon] restarting due to changes...[39m
+[32m[nodemon] restarting due to changes...[39m
+[32m[nodemon] restarting due to changes...[39m
+[32m[nodemon] restarting due to changes...[39m
+[32m[nodemon] restarting due to changes...[39m
+[32m[nodemon] restarting due to changes...[39m
+[32m[nodemon] restarting due to changes...[39m
+[32m[nodemon] restarting due to changes...[39m
+[32m[nodemon] restarting due to changes...[39m
+[32m[nodemon] restarting due to changes...[39m
+[32m[nodemon] restarting due to changes...[39m
+[32m[nodemon] restarting due to changes...[39m
+[32m[nodemon] restarting due to changes...[39m
+[32m[nodemon] restarting due to changes...[39m
+[32m[nodemon] restarting due to changes...[39m
+[32m[nodemon] restarting due to changes...[39m
+[32m[nodemon] restarting due to changes...[39m
+[32m[nodemon] restarting due to changes...[39m
+[32m[nodemon] restarting due to changes...[39m
+[32m[nodemon] restarting due to changes...[39m
+[32m[nodemon] restarting due to changes...[39m
+[32m[nodemon] restarting due to changes...[39m
+[32m[nodemon] restarting due to changes...[39m
+[32m[nodemon] restarting due to changes...[39m
+[32m[nodemon] restarting due to changes...[39m
+[32m[nodemon] restarting due to changes...[39m
+[32m[nodemon] restarting due to changes...[39m
+[32m[nodemon] restarting due to changes...[39m
+[32m[nodemon] restarting due to changes...[39m
+[32m[nodemon] restarting due to changes...[39m
+[32m[nodemon] restarting due to changes...[39m
+[32m[nodemon] restarting due to changes...[39m
+[32m[nodemon] restarting due to changes...[39m
+[32m[nodemon] restarting due to changes...[39m
+[32m[nodemon] restarting due to changes...[39m
+[32m[nodemon] restarting due to changes...[39m
+[32m[nodemon] restarting due to changes...[39m
+[32m[nodemon] restarting due to changes...[39m
+[32m[nodemon] restarting due to changes...[39m
+[32m[nodemon] restarting due to changes...[39m
+[32m[nodemon] restarting due to changes...[39m
+[32m[nodemon] restarting due to changes...[39m
+[32m[nodemon] restarting due to changes...[39m
+[32m[nodemon] restarting due to changes...[39m
+[32m[nodemon] restarting due to changes...[39m
+[32m[nodemon] restarting due to changes...[39m
+[32m[nodemon] restarting due to changes...[39m
+[32m[nodemon] restarting due to changes...[39m
+[32m[nodemon] restarting due to changes...[39m
+[32m[nodemon] restarting due to changes...[39m
+[32m[nodemon] restarting due to changes...[39m
+[32m[nodemon] restarting due to changes...[39m
+[32m[nodemon] restarting due to changes...[39m
+[32m[nodemon] restarting due to changes...[39m
+[32m[nodemon] restarting due to changes...[39m
+[32m[nodemon] restarting due to changes...[39m
+[32m[nodemon] restarting due to changes...[39m
+[32m[nodemon] restarting due to changes...[39m
+[32m[nodemon] restarting due to changes...[39m
+[32m[nodemon] restarting due to changes...[39m
+[32m[nodemon] restarting due to changes...[39m
+[32m[nodemon] restarting due to changes...[39m
+[32m[nodemon] restarting due to changes...[39m
+[32m[nodemon] restarting due to changes...[39m
+[32m[nodemon] restarting due to changes...[39m
+[32m[nodemon] starting `node server.js`[39m
+[dotenv@17.3.1] injecting env (7) from .env -- tip: 🔐 prevent building .env in docker: https://dotenvx.com/prebuild
+{"level":"info","message":"Connected to MongoDB","mode":"configured-instance","timestamp":"2026-03-20T20:31:22.424Z"}
+{"level":"info","message":"Server started","port":5001,"timestamp":"2026-03-20T20:31:22.431Z"}

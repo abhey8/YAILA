@@ -1,8 +1,8 @@
 # Adaptive AI Learning Platform
 
-This repository now exposes an adaptive-learning backend on top of the retained Figma frontend in `Student learn front`. The backend ingests uploaded PDFs into chunk embeddings, builds a concept graph, tracks per-student mastery, generates roadmaps, predicts confusion, and supports active recall tutoring.
+This repository now exposes an adaptive-learning backend and the integrated YAILA frontend. The backend ingests uploaded PDFs into chunk embeddings, builds a concept graph, tracks per-student mastery, generates roadmaps, predicts confusion, and supports active recall tutoring.
 
-The primary implementation details and API contract live in [backend/ADAPTIVE_PLATFORM.md](/Users/abheydua2025/Desktop/sesd_proj/backend/ADAPTIVE_PLATFORM.md).
+The primary implementation details and API contract live in [ADAPTIVE_PLATFORM.md](/Users/abheydua2025/Desktop/sesd_proj/backend/ADAPTIVE_PLATFORM.md).
 
 ## Run
 
@@ -20,17 +20,17 @@ Required environment variables in `backend/.env`:
 PORT=5001
 MONGO_URI=mongodb://localhost:27017/ai-learning-assistant
 JWT_SECRET=replace-this
-GROK_API_KEY=xai-your-api-key-here
-GROK_CHAT_MODEL=grok-2-latest
-GROK_EMBEDDING_MODEL=v1
-EMBEDDING_DIMENSIONS=256
+GEMINI_API_KEY=your-gemini-api-key
+GEMINI_CHAT_MODEL=gemini-2.5-flash-lite
+GEMINI_EMBEDDING_MODEL=gemini-embedding-001
+EMBEDDING_DIMENSIONS=768
 RETRIEVAL_TOP_K=6
 ROADMAP_REFRESH_HOURS=168
 ```
 
 ### Frontend
 
-Use the retained Figma frontend:
+Use the integrated frontend:
 
 ```bash
 cd frontend
@@ -38,7 +38,7 @@ npm install
 npm run dev
 ```
 
-Point it at the backend if you add API wiring:
+Point it at the backend:
 
 ```env
 VITE_API_URL=http://localhost:5001/api
