@@ -335,7 +335,7 @@ export default function DocumentDetail() {
                     <Sparkles className="w-12 h-12 text-[var(--muted-foreground)] mx-auto mb-4" />
                     <p className="text-[var(--muted-foreground)] mb-4">Generate an AI-powered summary of this document</p>
                     <button
-                      onClick={handleGenerateSummary}
+                      onClick={() => handleGenerateSummary()}
                       disabled={isGenerating || !isDocumentReady}
                       className="px-6 py-3 rounded-lg study-button-primary"
                     >
