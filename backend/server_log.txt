@@ -656,3 +656,407 @@ Batch Embedding failed: ai.models.batchEmbedContents is not a function
 [dotenv@17.3.1] injecting env (7) from .env -- tip: 🔐 prevent building .env in docker: https://dotenvx.com/prebuild
 {"level":"info","message":"Connected to MongoDB","mode":"configured-instance","timestamp":"2026-03-20T20:31:22.424Z"}
 {"level":"info","message":"Server started","port":5001,"timestamp":"2026-03-20T20:31:22.431Z"}
+{"level":"warn","message":"Roadmap refresh failed","documentId":"69bbcec77271b388314dae53","error":"Knowledge graph not available for this document","timestamp":"2026-03-20T21:31:26.161Z"}
+{"level":"warn","message":"Roadmap refresh failed","documentId":"69bbd06f7271b388314daf19","error":"Knowledge graph not available for this document","timestamp":"2026-03-20T21:31:26.212Z"}
+{"level":"warn","message":"Roadmap refresh failed","documentId":"69bbd0da2ef4f5cea1889ea5","error":"Knowledge graph not available for this document","timestamp":"2026-03-20T21:31:26.246Z"}
+{"level":"warn","message":"Roadmap refresh failed","documentId":"69bbcec77271b388314dae53","error":"Knowledge graph not available for this document","timestamp":"2026-03-20T22:31:27.595Z"}
+{"level":"warn","message":"Roadmap refresh failed","documentId":"69bbd06f7271b388314daf19","error":"Knowledge graph not available for this document","timestamp":"2026-03-20T22:31:27.618Z"}
+{"level":"warn","message":"Roadmap refresh failed","documentId":"69bbd0da2ef4f5cea1889ea5","error":"Knowledge graph not available for this document","timestamp":"2026-03-20T22:31:27.639Z"}
+{"level":"warn","message":"Roadmap refresh failed","documentId":"69bbcec77271b388314dae53","error":"Knowledge graph not available for this document","timestamp":"2026-03-20T23:41:12.784Z"}
+{"level":"warn","message":"Roadmap refresh failed","documentId":"69bbd06f7271b388314daf19","error":"Knowledge graph not available for this document","timestamp":"2026-03-20T23:41:12.809Z"}
+{"level":"warn","message":"Roadmap refresh failed","documentId":"69bbd0da2ef4f5cea1889ea5","error":"Knowledge graph not available for this document","timestamp":"2026-03-20T23:41:12.854Z"}
+{"level":"warn","message":"Roadmap refresh failed","documentId":"69bbcec77271b388314dae53","error":"Connection to ac-gye9uaa-shard-00-02.ckekjhr.mongodb.net:27017 interrupted due to server monitor timeout","timestamp":"2026-03-21T01:05:30.989Z"}
+{"level":"warn","message":"Roadmap refresh failed","documentId":"69bbd06f7271b388314daf19","error":"Knowledge graph not available for this document","timestamp":"2026-03-21T01:05:33.141Z"}
+{"level":"warn","message":"Roadmap refresh failed","documentId":"69bbd0da2ef4f5cea1889ea5","error":"Knowledge graph not available for this document","timestamp":"2026-03-21T01:05:33.162Z"}
+{"level":"error","message":"Error in roadmap regeneration job","error":"Connection to ac-gye9uaa-shard-00-02.ckekjhr.mongodb.net:27017 interrupted due to server monitor timeout","timestamp":"2026-03-21T02:10:41.983Z"}
+{"level":"warn","message":"Roadmap refresh failed","documentId":"69bbcec77271b388314dae53","error":"read ETIMEDOUT","timestamp":"2026-03-21T03:29:25.689Z"}
+{"level":"warn","message":"Roadmap refresh failed","documentId":"69bbd06f7271b388314daf19","error":"Knowledge graph not available for this document","timestamp":"2026-03-21T03:29:26.936Z"}
+{"level":"warn","message":"Roadmap refresh failed","documentId":"69bbd0da2ef4f5cea1889ea5","error":"Knowledge graph not available for this document","timestamp":"2026-03-21T03:29:26.967Z"}
+{"level":"warn","message":"Roadmap refresh failed","documentId":"69bbcec77271b388314dae53","error":"Knowledge graph not available for this document","timestamp":"2026-03-21T04:01:50.821Z"}
+{"level":"warn","message":"Roadmap refresh failed","documentId":"69bbd06f7271b388314daf19","error":"Knowledge graph not available for this document","timestamp":"2026-03-21T04:01:50.863Z"}
+{"level":"warn","message":"Roadmap refresh failed","documentId":"69bbd0da2ef4f5cea1889ea5","error":"Knowledge graph not available for this document","timestamp":"2026-03-21T04:01:50.886Z"}
+{"level":"warn","message":"Roadmap refresh failed","documentId":"69bbcec77271b388314dae53","error":"Connection to ac-gye9uaa-shard-00-02.ckekjhr.mongodb.net:27017 interrupted due to server monitor timeout","timestamp":"2026-03-21T05:13:44.942Z"}
+{"level":"warn","message":"Roadmap refresh failed","documentId":"69bbd06f7271b388314daf19","error":"Knowledge graph not available for this document","timestamp":"2026-03-21T05:13:46.894Z"}
+{"level":"warn","message":"Roadmap refresh failed","documentId":"69bbd0da2ef4f5cea1889ea5","error":"Knowledge graph not available for this document","timestamp":"2026-03-21T05:13:46.916Z"}
+{"level":"error","message":"Error in roadmap regeneration job","error":"Socket 'secureConnect' timed out after 923181ms (connectTimeoutMS: 30000)","timestamp":"2026-03-21T06:14:48.043Z"}
+{"level":"error","message":"Error in roadmap regeneration job","error":"connection <monitor> to 159.41.170.34:27017 timed out","timestamp":"2026-03-21T07:15:50.611Z"}
+{"level":"warn","message":"Roadmap refresh failed","documentId":"69bbcec77271b388314dae53","error":"Knowledge graph not available for this document","timestamp":"2026-03-21T08:16:53.675Z"}
+{"level":"warn","message":"Roadmap refresh failed","documentId":"69bbd06f7271b388314daf19","error":"Knowledge graph not available for this document","timestamp":"2026-03-21T08:16:53.699Z"}
+{"level":"warn","message":"Roadmap refresh failed","documentId":"69bbd0da2ef4f5cea1889ea5","error":"Knowledge graph not available for this document","timestamp":"2026-03-21T08:16:53.719Z"}
+[32m[nodemon] restarting due to changes...[39m
+[32m[nodemon] starting `node server.js`[39m
+[dotenv@17.3.1] injecting env (7) from .env -- tip: ⚡️ secrets for agents: https://dotenvx.com/as2
+{"level":"info","message":"Connected to MongoDB","mode":"configured-instance","timestamp":"2026-03-21T08:32:27.393Z"}
+{"level":"info","message":"Server started","port":5001,"timestamp":"2026-03-21T08:32:27.409Z"}
+[32m[nodemon] restarting due to changes...[39m
+[32m[nodemon] starting `node server.js`[39m
+[dotenv@17.3.1] injecting env (7) from .env -- tip: ⚙️  load multiple .env files with { path: ['.env.local', '.env'] }
+{"level":"info","message":"Connected to MongoDB","mode":"configured-instance","timestamp":"2026-03-21T08:32:33.016Z"}
+{"level":"info","message":"Server started","port":5001,"timestamp":"2026-03-21T08:32:33.032Z"}
+[32m[nodemon] restarting due to changes...[39m
+[32m[nodemon] starting `node server.js`[39m
+[dotenv@17.3.1] injecting env (7) from .env -- tip: ⚙️  load multiple .env files with { path: ['.env.local', '.env'] }
+{"level":"info","message":"Connected to MongoDB","mode":"configured-instance","timestamp":"2026-03-21T08:32:40.777Z"}
+{"level":"info","message":"Server started","port":5001,"timestamp":"2026-03-21T08:32:40.788Z"}
+[32m[nodemon] restarting due to changes...[39m
+[32m[nodemon] starting `node server.js`[39m
+[dotenv@17.3.1] injecting env (7) from .env -- tip: 🔐 encrypt with Dotenvx: https://dotenvx.com
+{"level":"info","message":"Connected to MongoDB","mode":"configured-instance","timestamp":"2026-03-21T08:32:47.614Z"}
+{"level":"info","message":"Server started","port":5001,"timestamp":"2026-03-21T08:32:47.627Z"}
+[32m[nodemon] restarting due to changes...[39m
+[32m[nodemon] starting `node server.js`[39m
+[dotenv@17.3.1] injecting env (7) from .env -- tip: ⚙️  write to custom object with { processEnv: myObject }
+{"level":"info","message":"Connected to MongoDB","mode":"configured-instance","timestamp":"2026-03-21T08:32:58.648Z"}
+{"level":"info","message":"Server started","port":5001,"timestamp":"2026-03-21T08:32:58.671Z"}
+[32m[nodemon] restarting due to changes...[39m
+[32m[nodemon] restarting due to changes...[39m
+[32m[nodemon] starting `node server.js`[39m
+[dotenv@17.3.1] injecting env (7) from .env -- tip: ⚙️  write to custom object with { processEnv: myObject }
+{"level":"info","message":"Connected to MongoDB","mode":"configured-instance","timestamp":"2026-03-21T08:33:06.055Z"}
+{"level":"info","message":"Server started","port":5001,"timestamp":"2026-03-21T08:33:06.078Z"}
+[32m[nodemon] restarting due to changes...[39m
+[32m[nodemon] restarting due to changes...[39m
+[32m[nodemon] starting `node server.js`[39m
+[dotenv@17.3.1] injecting env (7) from .env -- tip: ⚙️  write to custom object with { processEnv: myObject }
+{"level":"info","message":"Connected to MongoDB","mode":"configured-instance","timestamp":"2026-03-21T08:33:13.143Z"}
+{"level":"info","message":"Server started","port":5001,"timestamp":"2026-03-21T08:33:13.151Z"}
+[32m[nodemon] restarting due to changes...[39m
+[32m[nodemon] starting `node server.js`[39m
+[dotenv@17.3.1] injecting env (7) from .env -- tip: 🤖 agentic secret storage: https://dotenvx.com/as2
+{"level":"info","message":"Connected to MongoDB","mode":"configured-instance","timestamp":"2026-03-21T08:33:26.895Z"}
+{"level":"info","message":"Server started","port":5001,"timestamp":"2026-03-21T08:33:26.908Z"}
+[32m[nodemon] restarting due to changes...[39m
+[32m[nodemon] starting `node server.js`[39m
+[32m[nodemon] restarting due to changes...[39m
+[32m[nodemon] starting `node server.js`[39m
+[dotenv@17.3.1] injecting env (7) from .env -- tip: 🔐 prevent building .env in docker: https://dotenvx.com/prebuild
+{"level":"info","message":"Connected to MongoDB","mode":"configured-instance","timestamp":"2026-03-21T08:33:37.096Z"}
+{"level":"info","message":"Server started","port":5001,"timestamp":"2026-03-21T08:33:37.114Z"}
+[32m[nodemon] restarting due to changes...[39m
+[32m[nodemon] restarting due to changes...[39m
+[32m[nodemon] starting `node server.js`[39m
+[dotenv@17.3.1] injecting env (7) from .env -- tip: ⚙️  write to custom object with { processEnv: myObject }
+{"level":"info","message":"Connected to MongoDB","mode":"configured-instance","timestamp":"2026-03-21T08:33:47.556Z"}
+{"level":"info","message":"Server started","port":5001,"timestamp":"2026-03-21T08:33:47.573Z"}
+[32m[nodemon] restarting due to changes...[39m
+[32m[nodemon] restarting due to changes...[39m
+[32m[nodemon] starting `node server.js`[39m
+[dotenv@17.3.1] injecting env (7) from .env -- tip: 🔐 encrypt with Dotenvx: https://dotenvx.com
+{"level":"info","message":"Connected to MongoDB","mode":"configured-instance","timestamp":"2026-03-21T08:34:12.187Z"}
+{"level":"info","message":"Server started","port":5001,"timestamp":"2026-03-21T08:34:12.198Z"}
+[32m[nodemon] restarting due to changes...[39m
+[32m[nodemon] starting `node server.js`[39m
+[dotenv@17.3.1] injecting env (7) from .env -- tip: 🔐 encrypt with Dotenvx: https://dotenvx.com
+{"level":"info","message":"Connected to MongoDB","mode":"configured-instance","timestamp":"2026-03-21T08:34:20.568Z"}
+{"level":"info","message":"Server started","port":5001,"timestamp":"2026-03-21T08:34:20.583Z"}
+[32m[nodemon] restarting due to changes...[39m
+[32m[nodemon] starting `node server.js`[39m
+[dotenv@17.3.1] injecting env (7) from .env -- tip: ⚙️  write to custom object with { processEnv: myObject }
+{"level":"info","message":"Connected to MongoDB","mode":"configured-instance","timestamp":"2026-03-21T08:34:33.622Z"}
+{"level":"info","message":"Server started","port":5001,"timestamp":"2026-03-21T08:34:33.636Z"}
+[32m[nodemon] restarting due to changes...[39m
+[32m[nodemon] starting `node server.js`[39m
+[dotenv@17.3.1] injecting env (7) from .env -- tip: ⚙️  suppress all logs with { quiet: true }
+{"level":"info","message":"Connected to MongoDB","mode":"configured-instance","timestamp":"2026-03-21T08:34:50.420Z"}
+{"level":"info","message":"Server started","port":5001,"timestamp":"2026-03-21T08:34:50.433Z"}
+[32m[nodemon] restarting due to changes...[39m
+[32m[nodemon] starting `node server.js`[39m
+node:internal/modules/esm/resolve:283
+    throw new ERR_MODULE_NOT_FOUND(
+          ^
+
+Error [ERR_MODULE_NOT_FOUND]: Cannot find module '/Users/abheydua2025/Desktop/sesd_proj/backend/services/chatService.js' imported from /Users/abheydua2025/Desktop/sesd_proj/backend/controllers/aiController.js
+    at finalizeResolution (node:internal/modules/esm/resolve:283:11)
+    at moduleResolve (node:internal/modules/esm/resolve:952:10)
+    at defaultResolve (node:internal/modules/esm/resolve:1188:11)
+    at ModuleLoader.defaultResolve (node:internal/modules/esm/loader:642:12)
+    at #cachedDefaultResolve (node:internal/modules/esm/loader:591:25)
+    at ModuleLoader.resolve (node:internal/modules/esm/loader:574:38)
+    at ModuleLoader.getModuleJobForImport (node:internal/modules/esm/loader:236:38)
+    at ModuleJob._link (node:internal/modules/esm/module_job:130:49) {
+  code: 'ERR_MODULE_NOT_FOUND',
+  url: 'file:///Users/abheydua2025/Desktop/sesd_proj/backend/services/chatService.js'
+}
+
+Node.js v20.19.4
+[31m[nodemon] app crashed - waiting for file changes before starting...[39m
+[32m[nodemon] restarting due to changes...[39m
+[32m[nodemon] starting `node server.js`[39m
+file:///Users/abheydua2025/Desktop/sesd_proj/backend/controllers/aiController.js:9
+import { chatWithDocument } from '../services/chatService.js';
+         ^^^^^^^^^^^^^^^^
+SyntaxError: The requested module '../services/chatService.js' does not provide an export named 'chatWithDocument'
+    at ModuleJob._instantiate (node:internal/modules/esm/module_job:175:21)
+    at async ModuleJob.run (node:internal/modules/esm/module_job:258:5)
+    at async ModuleLoader.import (node:internal/modules/esm/loader:540:24)
+    at async asyncRunEntryPointWithESMLoader (node:internal/modules/run_main:117:5)
+
+Node.js v20.19.4
+[31m[nodemon] app crashed - waiting for file changes before starting...[39m
+[32m[nodemon] restarting due to changes...[39m
+[32m[nodemon] starting `node server.js`[39m
+file:///Users/abheydua2025/Desktop/sesd_proj/backend/controllers/aiController.js:9
+import { chatWithDocument } from '../services/chatService.js';
+         ^^^^^^^^^^^^^^^^
+SyntaxError: The requested module '../services/chatService.js' does not provide an export named 'chatWithDocument'
+    at ModuleJob._instantiate (node:internal/modules/esm/module_job:175:21)
+    at async ModuleJob.run (node:internal/modules/esm/module_job:258:5)
+    at async ModuleLoader.import (node:internal/modules/esm/loader:540:24)
+    at async asyncRunEntryPointWithESMLoader (node:internal/modules/run_main:117:5)
+
+Node.js v20.19.4
+[31m[nodemon] app crashed - waiting for file changes before starting...[39m
+[32m[nodemon] restarting due to changes...[39m
+[32m[nodemon] starting `node server.js`[39m
+file:///Users/abheydua2025/Desktop/sesd_proj/backend/controllers/aiController.js:9
+import { chatWithDocument } from '../services/chatService.js';
+         ^^^^^^^^^^^^^^^^
+SyntaxError: The requested module '../services/chatService.js' does not provide an export named 'chatWithDocument'
+    at ModuleJob._instantiate (node:internal/modules/esm/module_job:175:21)
+    at async ModuleJob.run (node:internal/modules/esm/module_job:258:5)
+    at async ModuleLoader.import (node:internal/modules/esm/loader:540:24)
+    at async asyncRunEntryPointWithESMLoader (node:internal/modules/run_main:117:5)
+
+Node.js v20.19.4
+[31m[nodemon] app crashed - waiting for file changes before starting...[39m
+[32m[nodemon] restarting due to changes...[39m
+[32m[nodemon] starting `node server.js`[39m
+[dotenv@17.3.1] injecting env (7) from .env -- tip: ⚙️  suppress all logs with { quiet: true }
+{"level":"info","message":"Connected to MongoDB","mode":"configured-instance","timestamp":"2026-03-21T08:35:56.758Z"}
+{"level":"info","message":"Server started","port":5001,"timestamp":"2026-03-21T08:35:56.770Z"}
+[32m[nodemon] restarting due to changes...[39m
+[32m[nodemon] starting `node server.js`[39m
+[dotenv@17.3.1] injecting env (7) from .env -- tip: ⚙️  enable debug logging with { debug: true }
+{"level":"info","message":"Connected to MongoDB","mode":"configured-instance","timestamp":"2026-03-21T08:36:02.932Z"}
+{"level":"info","message":"Server started","port":5001,"timestamp":"2026-03-21T08:36:02.941Z"}
+[32m[nodemon] restarting due to changes...[39m
+[32m[nodemon] starting `node server.js`[39m
+node:internal/modules/esm/resolve:283
+    throw new ERR_MODULE_NOT_FOUND(
+          ^
+
+Error [ERR_MODULE_NOT_FOUND]: Cannot find module '/Users/abheydua2025/Desktop/sesd_proj/backend/services/documentIngestionService.js' imported from /Users/abheydua2025/Desktop/sesd_proj/backend/services/documentProcessingService.js
+    at finalizeResolution (node:internal/modules/esm/resolve:283:11)
+    at moduleResolve (node:internal/modules/esm/resolve:952:10)
+    at defaultResolve (node:internal/modules/esm/resolve:1188:11)
+    at ModuleLoader.defaultResolve (node:internal/modules/esm/loader:642:12)
+    at #cachedDefaultResolve (node:internal/modules/esm/loader:591:25)
+    at ModuleLoader.resolve (node:internal/modules/esm/loader:574:38)
+    at ModuleLoader.getModuleJobForImport (node:internal/modules/esm/loader:236:38)
+    at ModuleJob._link (node:internal/modules/esm/module_job:130:49) {
+  code: 'ERR_MODULE_NOT_FOUND',
+  url: 'file:///Users/abheydua2025/Desktop/sesd_proj/backend/services/documentIngestionService.js'
+}
+
+Node.js v20.19.4
+[31m[nodemon] app crashed - waiting for file changes before starting...[39m
+[32m[nodemon] restarting due to changes...[39m
+[32m[nodemon] starting `node server.js`[39m
+node:internal/modules/esm/resolve:283
+    throw new ERR_MODULE_NOT_FOUND(
+          ^
+
+Error [ERR_MODULE_NOT_FOUND]: Cannot find module '/Users/abheydua2025/Desktop/sesd_proj/backend/services/documentIngestionService.js' imported from /Users/abheydua2025/Desktop/sesd_proj/backend/services/documentProcessingService.js
+    at finalizeResolution (node:internal/modules/esm/resolve:283:11)
+    at moduleResolve (node:internal/modules/esm/resolve:952:10)
+    at defaultResolve (node:internal/modules/esm/resolve:1188:11)
+    at ModuleLoader.defaultResolve (node:internal/modules/esm/loader:642:12)
+    at #cachedDefaultResolve (node:internal/modules/esm/loader:591:25)
+    at ModuleLoader.resolve (node:internal/modules/esm/loader:574:38)
+    at ModuleLoader.getModuleJobForImport (node:internal/modules/esm/loader:236:38)
+    at ModuleJob._link (node:internal/modules/esm/module_job:130:49) {
+  code: 'ERR_MODULE_NOT_FOUND',
+  url: 'file:///Users/abheydua2025/Desktop/sesd_proj/backend/services/documentIngestionService.js'
+}
+
+Node.js v20.19.4
+[31m[nodemon] app crashed - waiting for file changes before starting...[39m
+[32m[nodemon] restarting due to changes...[39m
+[32m[nodemon] starting `node server.js`[39m
+[32m[nodemon] restarting due to changes...[39m
+[32m[nodemon] starting `node server.js`[39m
+[dotenv@17.3.1] injecting env (7) from .env -- tip: 🔐 prevent building .env in docker: https://dotenvx.com/prebuild
+{"level":"info","message":"Connected to MongoDB","mode":"configured-instance","timestamp":"2026-03-21T08:36:41.028Z"}
+{"level":"info","message":"Server started","port":5001,"timestamp":"2026-03-21T08:36:41.042Z"}
+[32m[nodemon] restarting due to changes...[39m
+[32m[nodemon] starting `node server.js`[39m
+[dotenv@17.3.1] injecting env (7) from .env -- tip: 🔐 encrypt with Dotenvx: https://dotenvx.com
+{"level":"info","message":"Connected to MongoDB","mode":"configured-instance","timestamp":"2026-03-21T08:36:50.859Z"}
+{"level":"info","message":"Server started","port":5001,"timestamp":"2026-03-21T08:36:50.877Z"}
+[32m[nodemon] restarting due to changes...[39m
+[32m[nodemon] starting `node server.js`[39m
+[32m[nodemon] restarting due to changes...[39m
+[32m[nodemon] restarting due to changes...[39m
+[dotenv@17.3.1] injecting env (7) from .env -- tip: ⚙️  write to custom object with { processEnv: myObject }
+[32m[nodemon] starting `node server.js`[39m
+[dotenv@17.3.1] injecting env (7) from .env -- tip: ⚙️  load multiple .env files with { path: ['.env.local', '.env'] }
+{"level":"info","message":"Connected to MongoDB","mode":"configured-instance","timestamp":"2026-03-21T08:36:57.801Z"}
+{"level":"info","message":"Server started","port":5001,"timestamp":"2026-03-21T08:36:57.810Z"}
+[32m[nodemon] restarting due to changes...[39m
+[32m[nodemon] restarting due to changes...[39m
+[32m[nodemon] starting `node server.js`[39m
+[dotenv@17.3.1] injecting env (7) from .env -- tip: ⚙️  write to custom object with { processEnv: myObject }
+{"level":"info","message":"Connected to MongoDB","mode":"configured-instance","timestamp":"2026-03-21T08:37:05.903Z"}
+{"level":"info","message":"Server started","port":5001,"timestamp":"2026-03-21T08:37:05.914Z"}
+[32m[nodemon] restarting due to changes...[39m
+[32m[nodemon] restarting due to changes...[39m
+[32m[nodemon] starting `node server.js`[39m
+[dotenv@17.3.1] injecting env (7) from .env -- tip: 🔐 prevent building .env in docker: https://dotenvx.com/prebuild
+{"level":"info","message":"Connected to MongoDB","mode":"configured-instance","timestamp":"2026-03-21T08:37:11.276Z"}
+{"level":"info","message":"Server started","port":5001,"timestamp":"2026-03-21T08:37:11.291Z"}
+[32m[nodemon] restarting due to changes...[39m
+[32m[nodemon] restarting due to changes...[39m
+[32m[nodemon] starting `node server.js`[39m
+[dotenv@17.3.1] injecting env (7) from .env -- tip: 🛠️  run anywhere with `dotenvx run -- yourcommand`
+{"level":"info","message":"Connected to MongoDB","mode":"configured-instance","timestamp":"2026-03-21T08:37:17.362Z"}
+{"level":"info","message":"Server started","port":5001,"timestamp":"2026-03-21T08:37:17.370Z"}
+[32m[nodemon] restarting due to changes...[39m
+[32m[nodemon] starting `node server.js`[39m
+[dotenv@17.3.1] injecting env (7) from .env -- tip: 🛠️  run anywhere with `dotenvx run -- yourcommand`
+{"level":"info","message":"Connected to MongoDB","mode":"configured-instance","timestamp":"2026-03-21T08:37:23.263Z"}
+{"level":"info","message":"Server started","port":5001,"timestamp":"2026-03-21T08:37:23.282Z"}
+[32m[nodemon] restarting due to changes...[39m
+[32m[nodemon] starting `node server.js`[39m
+[dotenv@17.3.1] injecting env (7) from .env -- tip: 🔐 prevent committing .env to code: https://dotenvx.com/precommit
+{"level":"info","message":"Connected to MongoDB","mode":"configured-instance","timestamp":"2026-03-21T08:37:33.035Z"}
+{"level":"info","message":"Server started","port":5001,"timestamp":"2026-03-21T08:37:33.046Z"}
+[32m[nodemon] restarting due to changes...[39m
+[32m[nodemon] starting `node server.js`[39m
+[dotenv@17.3.1] injecting env (7) from .env -- tip: ⚙️  load multiple .env files with { path: ['.env.local', '.env'] }
+{"level":"info","message":"Connected to MongoDB","mode":"configured-instance","timestamp":"2026-03-21T08:37:37.718Z"}
+{"level":"info","message":"Server started","port":5001,"timestamp":"2026-03-21T08:37:37.732Z"}
+[32m[nodemon] restarting due to changes...[39m
+[32m[nodemon] starting `node server.js`[39m
+node:internal/modules/esm/resolve:283
+    throw new ERR_MODULE_NOT_FOUND(
+          ^
+
+Error [ERR_MODULE_NOT_FOUND]: Cannot find module '/Users/abheydua2025/Desktop/sesd_proj/backend/services/quizService.js' imported from /Users/abheydua2025/Desktop/sesd_proj/backend/controllers/quizController.js
+    at finalizeResolution (node:internal/modules/esm/resolve:283:11)
+    at moduleResolve (node:internal/modules/esm/resolve:952:10)
+    at defaultResolve (node:internal/modules/esm/resolve:1188:11)
+    at ModuleLoader.defaultResolve (node:internal/modules/esm/loader:642:12)
+    at #cachedDefaultResolve (node:internal/modules/esm/loader:591:25)
+    at ModuleLoader.resolve (node:internal/modules/esm/loader:574:38)
+    at ModuleLoader.getModuleJobForImport (node:internal/modules/esm/loader:236:38)
+    at ModuleJob._link (node:internal/modules/esm/module_job:130:49) {
+  code: 'ERR_MODULE_NOT_FOUND',
+  url: 'file:///Users/abheydua2025/Desktop/sesd_proj/backend/services/quizService.js'
+}
+
+Node.js v20.19.4
+[31m[nodemon] app crashed - waiting for file changes before starting...[39m
+[32m[nodemon] restarting due to changes...[39m
+[32m[nodemon] starting `node server.js`[39m
+node:internal/modules/esm/resolve:283
+    throw new ERR_MODULE_NOT_FOUND(
+          ^
+
+Error [ERR_MODULE_NOT_FOUND]: Cannot find module '/Users/abheydua2025/Desktop/sesd_proj/backend/services/quizService.js' imported from /Users/abheydua2025/Desktop/sesd_proj/backend/controllers/quizController.js
+    at finalizeResolution (node:internal/modules/esm/resolve:283:11)
+    at moduleResolve (node:internal/modules/esm/resolve:952:10)
+    at defaultResolve (node:internal/modules/esm/resolve:1188:11)
+    at ModuleLoader.defaultResolve (node:internal/modules/esm/loader:642:12)
+    at #cachedDefaultResolve (node:internal/modules/esm/loader:591:25)
+    at ModuleLoader.resolve (node:internal/modules/esm/loader:574:38)
+    at ModuleLoader.getModuleJobForImport (node:internal/modules/esm/loader:236:38)
+    at ModuleJob._link (node:internal/modules/esm/module_job:130:49) {
+  code: 'ERR_MODULE_NOT_FOUND',
+  url: 'file:///Users/abheydua2025/Desktop/sesd_proj/backend/services/quizService.js'
+}
+
+Node.js v20.19.4
+[31m[nodemon] app crashed - waiting for file changes before starting...[39m
+[32m[nodemon] restarting due to changes...[39m
+[32m[nodemon] starting `node server.js`[39m
+[32m[nodemon] restarting due to changes...[39m
+[32m[nodemon] starting `node server.js`[39m
+[dotenv@17.3.1] injecting env (7) from .env -- tip: 🔐 prevent committing .env to code: https://dotenvx.com/precommit
+{"level":"info","message":"Connected to MongoDB","mode":"configured-instance","timestamp":"2026-03-21T08:38:18.047Z"}
+{"level":"info","message":"Server started","port":5001,"timestamp":"2026-03-21T08:38:18.060Z"}
+[32m[nodemon] restarting due to changes...[39m
+[32m[nodemon] starting `node server.js`[39m
+[dotenv@17.3.1] injecting env (7) from .env -- tip: 🛡️ auth for agents: https://vestauth.com
+{"level":"info","message":"Connected to MongoDB","mode":"configured-instance","timestamp":"2026-03-21T08:38:28.513Z"}
+{"level":"info","message":"Server started","port":5001,"timestamp":"2026-03-21T08:38:28.523Z"}
+[32m[nodemon] restarting due to changes...[39m
+[32m[nodemon] starting `node server.js`[39m
+node:internal/modules/esm/resolve:283
+    throw new ERR_MODULE_NOT_FOUND(
+          ^
+
+Error [ERR_MODULE_NOT_FOUND]: Cannot find module '/Users/abheydua2025/Desktop/sesd_proj/backend/controllers/flashcardController.js' imported from /Users/abheydua2025/Desktop/sesd_proj/backend/routes/flashcardRoutes.js
+    at finalizeResolution (node:internal/modules/esm/resolve:283:11)
+    at moduleResolve (node:internal/modules/esm/resolve:952:10)
+    at defaultResolve (node:internal/modules/esm/resolve:1188:11)
+    at ModuleLoader.defaultResolve (node:internal/modules/esm/loader:642:12)
+    at #cachedDefaultResolve (node:internal/modules/esm/loader:591:25)
+    at ModuleLoader.resolve (node:internal/modules/esm/loader:574:38)
+    at ModuleLoader.getModuleJobForImport (node:internal/modules/esm/loader:236:38)
+    at ModuleJob._link (node:internal/modules/esm/module_job:130:49) {
+  code: 'ERR_MODULE_NOT_FOUND',
+  url: 'file:///Users/abheydua2025/Desktop/sesd_proj/backend/controllers/flashcardController.js'
+}
+
+Node.js v20.19.4
+[31m[nodemon] app crashed - waiting for file changes before starting...[39m
+[32m[nodemon] restarting due to changes...[39m
+[32m[nodemon] starting `node server.js`[39m
+[32m[nodemon] restarting due to changes...[39m
+[32m[nodemon] starting `node server.js`[39m
+[dotenv@17.3.1] injecting env (7) from .env -- tip: 🔐 encrypt with Dotenvx: https://dotenvx.com
+{"level":"info","message":"Connected to MongoDB","mode":"configured-instance","timestamp":"2026-03-21T08:39:06.395Z"}
+{"level":"info","message":"Server started","port":5001,"timestamp":"2026-03-21T08:39:06.408Z"}
+[32m[nodemon] restarting due to changes...[39m
+[32m[nodemon] starting `node server.js`[39m
+[dotenv@17.3.1] injecting env (7) from .env -- tip: ⚙️  specify custom .env file path with { path: '/custom/path/.env' }
+{"level":"info","message":"Connected to MongoDB","mode":"configured-instance","timestamp":"2026-03-21T08:39:19.897Z"}
+{"level":"info","message":"Server started","port":5001,"timestamp":"2026-03-21T08:39:19.916Z"}
+[32m[nodemon] restarting due to changes...[39m
+[32m[nodemon] starting `node server.js`[39m
+[dotenv@17.3.1] injecting env (7) from .env -- tip: ⚙️  load multiple .env files with { path: ['.env.local', '.env'] }
+{"level":"info","message":"Connected to MongoDB","mode":"configured-instance","timestamp":"2026-03-21T08:39:28.480Z"}
+{"level":"info","message":"Server started","port":5001,"timestamp":"2026-03-21T08:39:28.485Z"}
+[32m[nodemon] restarting due to changes...[39m
+[32m[nodemon] starting `node server.js`[39m
+[dotenv@17.3.1] injecting env (7) from .env -- tip: ⚡️ secrets for agents: https://dotenvx.com/as2
+{"level":"info","message":"Connected to MongoDB","mode":"configured-instance","timestamp":"2026-03-21T08:39:42.902Z"}
+{"level":"info","message":"Server started","port":5001,"timestamp":"2026-03-21T08:39:42.914Z"}
+[32m[nodemon] restarting due to changes...[39m
+[32m[nodemon] starting `node server.js`[39m
+[dotenv@17.3.1] injecting env (7) from .env -- tip: 🔐 encrypt with Dotenvx: https://dotenvx.com
+{"level":"info","message":"Connected to MongoDB","mode":"configured-instance","timestamp":"2026-03-21T08:40:10.541Z"}
+{"level":"info","message":"Server started","port":5001,"timestamp":"2026-03-21T08:40:10.558Z"}
+[32m[nodemon] restarting due to changes...[39m
+[32m[nodemon] starting `node server.js`[39m
+[dotenv@17.3.1] injecting env (7) from .env -- tip: ⚙️  load multiple .env files with { path: ['.env.local', '.env'] }
+{"level":"info","message":"Connected to MongoDB","mode":"configured-instance","timestamp":"2026-03-21T08:40:26.597Z"}
+{"level":"info","message":"Server started","port":5001,"timestamp":"2026-03-21T08:40:26.616Z"}
+[32m[nodemon] restarting due to changes...[39m
+[32m[nodemon] starting `node server.js`[39m
+[dotenv@17.3.1] injecting env (7) from .env -- tip: ⚙️  specify custom .env file path with { path: '/custom/path/.env' }
+{"level":"info","message":"Connected to MongoDB","mode":"configured-instance","timestamp":"2026-03-21T08:40:45.420Z"}
+{"level":"info","message":"Server started","port":5001,"timestamp":"2026-03-21T08:40:45.472Z"}
+[32m[nodemon] restarting due to changes...[39m
+[32m[nodemon] starting `node server.js`[39m
+[dotenv@17.3.1] injecting env (7) from .env -- tip: 🛠️  run anywhere with `dotenvx run -- yourcommand`
+{"level":"info","message":"Connected to MongoDB","mode":"configured-instance","timestamp":"2026-03-21T08:41:17.822Z"}
+{"level":"info","message":"Server started","port":5001,"timestamp":"2026-03-21T08:41:17.837Z"}
+[32m[nodemon] restarting due to changes...[39m
+[32m[nodemon] starting `node server.js`[39m
+[dotenv@17.3.1] injecting env (7) from .env -- tip: 🛠️  run anywhere with `dotenvx run -- yourcommand`
+{"level":"info","message":"Connected to MongoDB","mode":"configured-instance","timestamp":"2026-03-21T08:41:31.295Z"}
+{"level":"info","message":"Server started","port":5001,"timestamp":"2026-03-21T08:41:31.308Z"}
+[32m[nodemon] restarting due to changes...[39m
+[32m[nodemon] starting `node server.js`[39m
+[dotenv@17.3.1] injecting env (7) from .env -- tip: 🛡️ auth for agents: https://vestauth.com
+{"level":"info","message":"Connected to MongoDB","mode":"configured-instance","timestamp":"2026-03-21T08:41:42.644Z"}
+{"level":"info","message":"Server started","port":5001,"timestamp":"2026-03-21T08:41:42.663Z"}
+[32m[nodemon] restarting due to changes...[39m
+[32m[nodemon] starting `node server.js`[39m
+[dotenv@17.3.1] injecting env (7) from .env -- tip: 🔐 prevent building .env in docker: https://dotenvx.com/prebuild
+{"level":"info","message":"Connected to MongoDB","mode":"configured-instance","timestamp":"2026-03-21T08:48:00.560Z"}
+{"level":"info","message":"Server started","port":5001,"timestamp":"2026-03-21T08:48:00.572Z"}
+{"level":"warn","message":"Roadmap refresh failed","documentId":"69bbcec77271b388314dae53","error":"Knowledge graph not available for this document","timestamp":"2026-03-21T09:48:05.643Z"}
+{"level":"warn","message":"Roadmap refresh failed","documentId":"69bbd06f7271b388314daf19","error":"Knowledge graph not available for this document","timestamp":"2026-03-21T09:48:05.666Z"}
+{"level":"warn","message":"Roadmap refresh failed","documentId":"69bbd0da2ef4f5cea1889ea5","error":"Knowledge graph not available for this document","timestamp":"2026-03-21T09:48:05.688Z"}

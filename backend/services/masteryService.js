@@ -1,6 +1,8 @@
 import { clamp, cosineSimilarity } from '../lib/math.js';
 import { conceptRepository } from '../repositories/conceptRepository.js';
 import { masteryRepository } from '../repositories/masteryRepository.js';
+import { createNotification } from './notificationService.js';
+import { trackActivity } from './activityService.js';
 
 const recencyWeight = (date) => {
     const ageDays = (Date.now() - new Date(date).getTime()) / (1000 * 60 * 60 * 24);
@@ -25,6 +27,7 @@ export const updateConceptMastery = async ({
         const accuracy = correctAttempts / attempts;
         const masteryScore = clamp((accuracy * 0.55) + (score * 0.25) + (recencyWeight(new Date()) * 0.2));
         const confusionScore = clamp(1 - masteryScore);
+        const needsRevision = masteryScore < 0.55;
 
         const record = await masteryRepository.upsert(userId, documentId, concept._id, {
             $set: {
@@ -32,7 +35,7 @@ export const updateConceptMastery = async ({
                 confidenceScore: clamp((existing?.confidenceScore || 0.4) * 0.5 + (score * 0.5)),
                 lastInteractionAt: new Date(),
                 confusionScore,
-                needsRevision: masteryScore < 0.55
+                needsRevision
             },
             $inc: {
                 attempts: 1,
@@ -50,6 +53,33 @@ export const updateConceptMastery = async ({
                 }
             }
         });
+
+        if (!existing?.needsRevision && needsRevision) {
+            await Promise.all([
+                trackActivity({
+                    userId,
+                    documentId,
+                    type: 'weak-concept-detected',
+                    title: 'Weak concept detected',
+                    description: `${concept.name} needs revision based on recent performance.`,
+                    metadata: {
+                        conceptId: concept._id,
+                        masteryScore
+                    }
+                }),
+                createNotification({
+                    userId,
+                    documentId,
+                    type: 'weak-concept-detected',
+                    title: 'Revision recommended',
+                    message: `${concept.name} has been flagged as a weak concept and should be reviewed.`,
+                    metadata: {
+                        conceptId: concept._id,
+                        masteryScore
+                    }
+                })
+            ]);
+        }
 
         updated.push(record);
     }

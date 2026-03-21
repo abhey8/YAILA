@@ -4,14 +4,16 @@ import { motion } from "motion/react";
 import { toast } from "sonner";
 import { useAuth } from "../context/AuthContext";
 import { useTheme } from "../context/ThemeContext";
-import { API_BASE_URL } from "../../services/api";
+import { API_BASE_URL, dashboardApi } from "../../services/api";
 
 export default function Profile() {
   const { user, token, updateUser } = useAuth();
   const { theme, toggleTheme } = useTheme();
   const [isEditing, setIsEditing] = useState(false);
   const [showPasswordChange, setShowPasswordChange] = useState(false);
-  
+  const [analytics, setAnalytics] = useState<any | null>(null);
+  const [isLoadingAnalytics, setIsLoadingAnalytics] = useState(true);
+
   const [formData, setFormData] = useState({
     name: "",
     email: "",
@@ -23,16 +25,32 @@ export default function Profile() {
 
   useEffect(() => {
     if (user) {
-      setFormData({
+      setFormData((current) => ({
+        ...current,
         name: user.name || "",
         email: user.email || "",
         age: user.age ? user.age.toString() : "",
         studySpecifications: user.studySpecifications || "",
         profilePic: user.profilePic || "",
-        bio: formData.bio,
-      });
+      }));
     }
   }, [user]);
+
+  useEffect(() => {
+    const loadAnalytics = async () => {
+      try {
+        setIsLoadingAnalytics(true);
+        const profileAnalytics = await dashboardApi.getProfileAnalytics();
+        setAnalytics(profileAnalytics);
+      } catch (error) {
+        toast.error("Failed to load profile analytics");
+      } finally {
+        setIsLoadingAnalytics(false);
+      }
+    };
+
+    loadAnalytics();
+  }, []);
 
   const [passwordData, setPasswordData] = useState({
     current: "",
@@ -44,22 +62,22 @@ export default function Profile() {
     try {
       const response = await fetch(`${API_BASE_URL}/auth/profile`, {
         method: "PUT",
-        headers: { 
+        headers: {
           "Content-Type": "application/json",
-          Authorization: `Bearer ${token}` 
+          Authorization: `Bearer ${token}`,
         },
         body: JSON.stringify({
           name: formData.name,
           email: formData.email,
           age: formData.age ? parseInt(formData.age, 10) : undefined,
           studySpecifications: formData.studySpecifications,
-          profilePic: formData.profilePic
-        })
+          profilePic: formData.profilePic,
+        }),
       });
 
       const updatedData = await response.json();
       if (!response.ok) throw new Error(updatedData.message || "Failed to update profile");
-      
+
       updateUser(updatedData);
       toast.success("Profile updated successfully!");
       setIsEditing(false);
@@ -77,14 +95,14 @@ export default function Profile() {
     try {
       const response = await fetch(`${API_BASE_URL}/auth/profile`, {
         method: "PUT",
-        headers: { 
+        headers: {
           "Content-Type": "application/json",
-          Authorization: `Bearer ${token}` 
+          Authorization: `Bearer ${token}`,
         },
         body: JSON.stringify({
           currentPassword: passwordData.current,
-          newPassword: passwordData.new
-        })
+          newPassword: passwordData.new,
+        }),
       });
 
       const updatedData = await response.json();
@@ -98,18 +116,25 @@ export default function Profile() {
     }
   };
 
-  const stats = [
-    { label: "Documents Uploaded", value: 12 },
-    { label: "Flashcards Created", value: 127 },
-    { label: "Quizzes Completed", value: 24 },
-    { label: "Study Streak", value: "7 days" },
-  ];
-
   const toggleClasses =
     "w-11 h-6 rounded-full bg-[var(--surface-3)] peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-[var(--ring)] peer-checked:bg-[var(--accent-primary)] after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:h-5 after:w-5 after:rounded-full after:border after:border-[var(--border)] after:bg-[var(--surface-1)] after:transition-all peer-checked:after:translate-x-full peer-checked:after:border-[var(--surface-1)]";
 
+  const stats = [
+    { label: "Documents Uploaded", value: analytics?.metrics?.documentsUploaded ?? 0 },
+    { label: "Flashcards Collected", value: analytics?.metrics?.flashcardsCollected ?? 0 },
+    { label: "Quizzes Attempted", value: analytics?.metrics?.quizzesAttempted ?? 0 },
+    { label: "Study Streak", value: `${analytics?.metrics?.studyStreakDays ?? 0} days` },
+  ];
+
+  const overviewItems = [
+    { label: "Learning Progress", value: `${analytics?.metrics?.learningProgressPercent ?? 0}%` },
+    { label: "Mastery Score", value: `${analytics?.metrics?.masteryScore ?? 0}%` },
+    { label: "Topic Coverage", value: `${analytics?.metrics?.topicCoveragePercent ?? 0}%` },
+    { label: "Consistency", value: `${analytics?.metrics?.consistencyPercent ?? 0}%` },
+  ];
+
   return (
-    <div className="max-w-4xl mx-auto space-y-6">
+    <div className="max-w-5xl mx-auto space-y-6">
       <h1 className="text-3xl font-bold text-[var(--foreground)]">Profile Settings</h1>
 
       <motion.div
@@ -129,10 +154,10 @@ export default function Profile() {
                 user?.name ? user.name.charAt(0).toUpperCase() : "U"
               )}
             </div>
-            <button 
+            <button
               onClick={() => {
-                 const url = prompt("Enter an image URL for your profile picture:");
-                 if (url) setFormData({ ...formData, profilePic: url });
+                const url = prompt("Enter an image URL for your profile picture:");
+                if (url) setFormData({ ...formData, profilePic: url });
               }}
               className="absolute bottom-0 right-0 w-8 h-8 study-button-primary rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"
             >
@@ -174,31 +199,31 @@ export default function Profile() {
                 </div>
 
                 <div className="flex gap-4">
-                    <div className="flex-1">
-                      <label className="block text-sm font-medium text-[var(--foreground-soft)] mb-2">
-                        Age
-                      </label>
+                  <div className="flex-1">
+                    <label className="block text-sm font-medium text-[var(--foreground-soft)] mb-2">
+                      Age
+                    </label>
+                    <input
+                      type="number"
+                      value={formData.age}
+                      onChange={(e) => setFormData({ ...formData, age: e.target.value })}
+                      className="w-full px-4 py-2.5 rounded-lg study-input"
+                    />
+                  </div>
+                  <div className="flex-1">
+                    <label className="block text-sm font-medium text-[var(--foreground-soft)] mb-2">
+                      Study Specs
+                    </label>
+                    <div className="relative">
+                      <BookOpen className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-[var(--muted-foreground)]" />
                       <input
-                        type="number"
-                        value={formData.age}
-                        onChange={(e) => setFormData({ ...formData, age: e.target.value })}
-                        className="w-full px-4 py-2.5 rounded-lg study-input"
+                        type="text"
+                        value={formData.studySpecifications}
+                        onChange={(e) => setFormData({ ...formData, studySpecifications: e.target.value })}
+                        className="w-full pl-11 pr-4 py-2.5 rounded-lg study-input"
                       />
                     </div>
-                    <div className="flex-1">
-                      <label className="block text-sm font-medium text-[var(--foreground-soft)] mb-2">
-                        Study Specs
-                      </label>
-                      <div className="relative">
-                        <BookOpen className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-[var(--muted-foreground)]" />
-                        <input
-                          type="text"
-                          value={formData.studySpecifications}
-                          onChange={(e) => setFormData({ ...formData, studySpecifications: e.target.value })}
-                          className="w-full pl-11 pr-4 py-2.5 rounded-lg study-input"
-                        />
-                      </div>
-                    </div>
+                  </div>
                 </div>
 
                 <div>
@@ -234,8 +259,12 @@ export default function Profile() {
                 <h2 className="text-2xl font-bold text-[var(--foreground)] mb-1">{formData.name}</h2>
                 <p className="text-[var(--muted-foreground)] mb-2">{formData.email}</p>
                 <div className="flex flex-wrap gap-3 text-sm mb-4 items-center">
-                    {formData.age ? <span>{formData.age} Years Old</span> : null}
-                    {formData.studySpecifications ? <span className="study-chip rounded-full px-3 py-1 flex items-center gap-1"><BookOpen className="w-4 h-4"/> {formData.studySpecifications}</span> : null}
+                  {formData.age ? <span>{formData.age} Years Old</span> : null}
+                  {formData.studySpecifications ? (
+                    <span className="study-chip rounded-full px-3 py-1 flex items-center gap-1">
+                      <BookOpen className="w-4 h-4" /> {formData.studySpecifications}
+                    </span>
+                  ) : null}
                 </div>
                 <p className="text-[var(--foreground-soft)] mb-4 leading-7">{formData.bio}</p>
                 <button
@@ -259,10 +288,61 @@ export default function Profile() {
             transition={{ delay: index * 0.1 }}
             className="study-panel-quiet rounded-xl p-4 text-center"
           >
-            <div className="text-2xl font-bold text-[var(--foreground)] mb-1">{stat.value}</div>
+            <div className="text-2xl font-bold text-[var(--foreground)] mb-1">
+              {isLoadingAnalytics ? "..." : stat.value}
+            </div>
             <div className="text-sm text-[var(--muted-foreground)]">{stat.label}</div>
           </motion.div>
         ))}
+      </div>
+
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="study-panel rounded-xl p-6"
+        >
+          <h3 className="text-xl font-bold text-[var(--foreground)] mb-6">Learning Overview</h3>
+          <div className="space-y-4">
+            {overviewItems.map((item) => (
+              <div key={item.label}>
+                <div className="flex items-center justify-between mb-2">
+                  <span className="text-sm text-[var(--foreground-soft)]">{item.label}</span>
+                  <span className="text-sm font-semibold text-[var(--foreground)]">
+                    {isLoadingAnalytics ? "..." : item.value}
+                  </span>
+                </div>
+                <div className="h-2 rounded-full bg-[var(--surface-3)] overflow-hidden">
+                  <div
+                    className="h-full bg-[var(--accent-primary)]"
+                    style={{ width: `${parseInt(item.value, 10) || 0}%` }}
+                  />
+                </div>
+              </div>
+            ))}
+          </div>
+        </motion.div>
+
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="study-panel rounded-xl p-6"
+        >
+          <h3 className="text-xl font-bold text-[var(--foreground)] mb-6">Recent Activity</h3>
+          <div className="space-y-3">
+            {analytics?.recentActivity?.length ? analytics.recentActivity.map((item: any) => (
+              <div key={item.id} className="study-panel-quiet rounded-xl p-4">
+                <div className="text-sm font-medium text-[var(--foreground)]">{item.title}</div>
+                <div className="text-xs text-[var(--muted-foreground)] mt-1">{item.description}</div>
+                {item.document ? (
+                  <div className="text-[11px] text-[var(--accent-primary)] mt-2">{item.document.title}</div>
+                ) : null}
+              </div>
+            )) : (
+              <div className="text-sm text-[var(--muted-foreground)]">No recent activity yet.</div>
+            )}
+          </div>
+        </motion.div>
       </div>
 
       <motion.div
@@ -378,12 +458,7 @@ export default function Profile() {
               <p className="text-sm text-[var(--muted-foreground)]">Switch to dark theme</p>
             </div>
             <label className="relative inline-flex items-center cursor-pointer">
-              <input 
-                type="checkbox" 
-                className="sr-only peer" 
-                checked={theme === 'dark'}
-                onChange={toggleTheme}
-              />
+              <input type="checkbox" className="sr-only peer" checked={theme === "dark"} onChange={toggleTheme} />
               <div className={toggleClasses}></div>
             </label>
           </div>

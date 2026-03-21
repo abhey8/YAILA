@@ -22,6 +22,19 @@ const documentSchema = new mongoose.Schema({
         language: { type: String, default: 'en' },
         sourceType: { type: String, default: 'pdf' }
     },
+    ingestionProgress: {
+        stage: {
+            type: String,
+            enum: ['queued', 'parsing', 'chunking', 'embedding', 'indexing', 'completed', 'failed'],
+            default: 'queued'
+        },
+        progressPercent: { type: Number, default: 0 },
+        totalChunks: { type: Number, default: 0 },
+        processedChunks: { type: Number, default: 0 },
+        embeddedChunks: { type: Number, default: 0 },
+        startedAt: { type: Date, default: null },
+        completedAt: { type: Date, default: null }
+    },
     createdAt: { type: Date, default: Date.now }
 });
 

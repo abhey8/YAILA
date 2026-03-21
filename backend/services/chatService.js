@@ -5,117 +5,142 @@ import { retrieveRelevantChunks } from './retrievalService.js';
 import { conceptRepository } from '../repositories/conceptRepository.js';
 import { updateConceptMastery } from './masteryService.js';
 
-const extractRawFallbackContext = (textContent = '', message = '') => {
-    const normalizedText = textContent.replace(/\s+/g, ' ').trim();
-    if (!normalizedText) {
-        return [];
-    }
+const NOT_FOUND_MESSAGE = 'Information not found in uploaded materials.';
 
-    const queryTerms = message
-        .toLowerCase()
-        .split(/\W+/)
-        .filter((term) => term.length > 2);
+const buildPrompt = ({ documentTitles, message, chunks, history }) => {
+    const context = chunks.map((chunk, index) => (
+        `Source ${index + 1}\nDocument: ${chunk.documentTitle}\nSection: ${chunk.sectionTitle || 'Untitled Section'}\nExcerpt:\n${chunk.content}`
+    )).join('\n\n');
 
-    const windows = [];
-    const windowSize = 1200;
-    const step = 800;
-
-    for (let start = 0; start < normalizedText.length; start += step) {
-        const content = normalizedText.slice(start, start + windowSize).trim();
-        if (!content) {
-            continue;
-        }
-
-        const lower = content.toLowerCase();
-        const lexicalHits = queryTerms.filter((term) => lower.includes(term)).length;
-        windows.push({
-            _id: `raw-${start}`,
-            content,
-            rerankScore: lexicalHits / Math.max(queryTerms.length, 1),
-            semanticScore: lexicalHits / Math.max(queryTerms.length, 1),
-        });
-    }
-
-    return windows
-        .sort((left, right) => right.rerankScore - left.rerankScore)
-        .slice(0, 4);
-};
-
-const buildPrompt = ({ document, message, chunks, history }) => {
-    const context = chunks.map((chunk, index) => `Source ${index + 1}:\n${chunk.content}`).join('\n\n');
     const memory = history
         .slice(-6)
         .map((item) => `${item.role.toUpperCase()}: ${item.content}`)
         .join('\n');
 
-    return `You are an adaptive study tutor for the uploaded document currently open in the app.
-The current document title is: "${document.title || document.originalName}".
-When the student says "the book", "the document", "this chapter", or similar, they are referring to this uploaded document.
-Use the retrieved document chunks first when the question is about the document.
-If the answer is present in the provided document context, answer from that context directly instead of saying you do not have access.
-If the question is simple general knowledge, arithmetic, or common factual knowledge not dependent on the document, answer it directly and correctly.
-Do not add repetitive disclaimer lines at the end of every answer.
-Only mention that something is general knowledge when that distinction is actually helpful for the student.
+    return `You are a study assistant answering strictly from uploaded materials.
+Available uploaded materials:
+${documentTitles.map((title) => `- ${title}`).join('\n')}
+
+Rules:
+- Use only the retrieved document excerpts.
+- If the answer is not supported by the excerpts, reply with exactly: "${NOT_FOUND_MESSAGE}"
+- Do not answer from general knowledge.
+- Keep the answer concise and study-focused.
+- When the answer is found, end with a short "Sources:" line that references document title and section only from the provided excerpts.
 
 Conversation memory:
 ${memory || 'None'}
 
-Retrieved context:
+Retrieved excerpts:
 ${context}
 
 Student question:
 ${message}`;
 };
 
-export const chatWithDocument = async ({ document, userId, message, history = [] }) => {
-    let chunks = await retrieveRelevantChunks({ documentId: document._id, query: message });
+const toCitation = (chunk) => ({
+    document: chunk.document,
+    chunk: chunk._id,
+    documentTitle: chunk.documentTitle || 'Uploaded Document',
+    sectionTitle: chunk.sectionTitle || 'Untitled Section',
+    chunkIndex: chunk.chunkIndex || 0
+});
+
+const uniqueCitations = (chunks) => {
+    const seen = new Set();
+    return chunks
+        .map(toCitation)
+        .filter((citation) => {
+            const key = `${citation.document?.toString?.() || citation.documentTitle}:${citation.sectionTitle}:${citation.chunkIndex}`;
+            if (seen.has(key)) {
+                return false;
+            }
+            seen.add(key);
+            return true;
+        })
+        .slice(0, 4);
+};
+
+export const chatWithDocuments = async ({
+    documents,
+    userId,
+    message,
+    history = []
+}) => {
+    const documentIds = documents.map((document) => document._id);
+    const documentTitles = documents.map((document) => document.title || document.originalName);
+
+    const chunks = await retrieveRelevantChunks({
+        userId,
+        documentIds,
+        query: message
+    });
+
     if (!chunks.length || (chunks[0]?.rerankScore ?? 0) < 0.08) {
-        chunks = extractRawFallbackContext(document.textContent || '', message);
+        return {
+            reply: NOT_FOUND_MESSAGE,
+            retrievedChunks: [],
+            citations: [],
+            concepts: []
+        };
     }
 
-    const concepts = await conceptRepository.listByDocument(document._id);
+    const concepts = await conceptRepository.listByDocuments(documentIds);
     const matchedConcepts = concepts
         .filter((concept) => chunks.some((chunk) => concept.chunkRefs.some((chunkId) => chunkId.toString() === chunk._id.toString())))
         .slice(0, 5);
 
-    const reply = await generateText(buildPrompt({ document, message, chunks, history }));
+    const citations = uniqueCitations(chunks);
+    const reply = await generateText(buildPrompt({ documentTitles, message, chunks, history }));
 
-    let chatSession = await ChatHistory.findOne({ document: document._id, user: userId });
-    if (!chatSession) {
-        chatSession = new ChatHistory({ document: document._id, user: userId, messages: [] });
+    let chatSession = documentIds.length === 1
+        ? await ChatHistory.findOne({ document: documentIds[0], user: userId })
+        : await ChatHistory.findOne({ document: null, user: userId, sourceDocuments: { $all: documentIds } });
+
+    if (chatSession && documentIds.length > 1 && (chatSession.sourceDocuments?.length || 0) !== documentIds.length) {
+        chatSession = null;
     }
+    if (!chatSession) {
+        chatSession = new ChatHistory({
+            document: documentIds.length === 1 ? documentIds[0] : null,
+            user: userId,
+            sourceDocuments: documentIds,
+            messages: []
+        });
+    }
+
+    const retrievedChunkIds = chunks.map((chunk) => chunk._id);
+    const conceptIds = matchedConcepts.map((concept) => concept._id);
 
     chatSession.messages.push({
         role: 'user',
         content: message,
-        retrievedChunkIds: chunks
-            .map((chunk) => chunk._id)
-            .filter((value) => typeof value !== 'string' || !value.startsWith('raw-')),
-        conceptIds: matchedConcepts.map((concept) => concept._id)
+        retrievedChunkIds,
+        conceptIds,
+        citations
     });
     chatSession.messages.push({
         role: 'ai',
         content: reply,
-        retrievedChunkIds: chunks
-            .map((chunk) => chunk._id)
-            .filter((value) => typeof value !== 'string' || !value.startsWith('raw-')),
-        conceptIds: matchedConcepts.map((concept) => concept._id)
+        retrievedChunkIds,
+        conceptIds,
+        citations
     });
     await chatSession.save();
 
     if (matchedConcepts.length) {
         await recordLearningInteraction({
             userId,
-            documentId: document._id,
-            conceptIds: matchedConcepts.map((concept) => concept._id),
+            documentId: documentIds[0],
+            conceptIds,
             timeSpentSeconds: 90,
             chatQuestions: 1
         });
 
         await updateConceptMastery({
             userId,
-            documentId: document._id,
-            conceptIds: matchedConcepts.map((concept) => concept._id),
+            documentId: documentIds[0],
+            conceptIds,
             sourceType: 'chat',
             score: 0.65
         });
@@ -126,8 +151,13 @@ export const chatWithDocument = async ({ document, userId, message, history = []
         retrievedChunks: chunks.map((chunk) => ({
             id: chunk._id,
             content: chunk.content,
-            score: chunk.rerankScore
+            score: chunk.rerankScore,
+            documentId: chunk.document,
+            documentTitle: chunk.documentTitle,
+            sectionTitle: chunk.sectionTitle || 'Untitled Section',
+            chunkIndex: chunk.chunkIndex
         })),
+        citations,
         concepts: matchedConcepts
     };
 };

@@ -10,6 +10,7 @@ import Roadmap from '../models/Roadmap.js';
 import { asyncHandler } from '../lib/asyncHandler.js';
 import { AppError } from '../lib/errors.js';
 import { documentRepository } from '../repositories/documentRepository.js';
+import { trackActivity } from '../services/activityService.js';
 import { scheduleDocumentIngestion } from '../services/documentProcessingService.js';
 import { extractTextFromPDF } from '../utils/pdfParser.js';
 
@@ -33,6 +34,27 @@ export const uploadDocument = asyncHandler(async (req, res) => {
                 pageCount,
                 language: 'en',
                 sourceType: 'pdf'
+            },
+            ingestionProgress: {
+                stage: 'queued',
+                progressPercent: 0,
+                totalChunks: 0,
+                processedChunks: 0,
+                embeddedChunks: 0,
+                startedAt: null,
+                completedAt: null
+            }
+        });
+
+        await trackActivity({
+            userId: req.user._id,
+            documentId: document._id,
+            type: 'document-uploaded',
+            title: 'Document uploaded',
+            description: `${document.title || document.originalName} was uploaded successfully.`,
+            metadata: {
+                pageCount,
+                size: req.file.size
             }
         });
 

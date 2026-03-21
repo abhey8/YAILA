@@ -2,16 +2,38 @@ import { normalizeWhitespace, splitParagraphs, tokenizeEstimate } from '../lib/t
 
 const MAX_CHUNK_CHARS = 1400;
 const OVERLAP_CHARS = 250;
+const HEADING_PATTERN = /^([A-Z0-9][A-Za-z0-9\s,.:;()/-]{2,80}|(?:\d+\.)+\d*\s+[A-Z][A-Za-z0-9\s,.:;()/-]{2,80})$/;
+
+const isLikelyHeading = (paragraph) => {
+    const clean = paragraph.trim();
+    if (!clean || clean.length > 90) {
+        return false;
+    }
+
+    if (clean.split(/\s+/).length > 12) {
+        return false;
+    }
+
+    return HEADING_PATTERN.test(clean) && !clean.endsWith('.');
+};
 
 export const buildChunks = (text) => {
     const paragraphs = splitParagraphs(text);
     const semanticGroups = [];
     let current = [];
     let currentLength = 0;
+    let currentSectionTitle = 'Introduction';
 
     paragraphs.forEach((paragraph) => {
+        if (isLikelyHeading(paragraph)) {
+            currentSectionTitle = paragraph.trim();
+        }
+
         if (currentLength + paragraph.length > MAX_CHUNK_CHARS && current.length) {
-            semanticGroups.push(current.join('\n\n'));
+            semanticGroups.push({
+                content: current.join('\n\n'),
+                sectionTitle: currentSectionTitle
+            });
             current = [paragraph];
             currentLength = paragraph.length;
             return;
@@ -22,14 +44,17 @@ export const buildChunks = (text) => {
     });
 
     if (current.length) {
-        semanticGroups.push(current.join('\n\n'));
+        semanticGroups.push({
+            content: current.join('\n\n'),
+            sectionTitle: currentSectionTitle
+        });
     }
 
     const chunks = [];
     let cursor = 0;
 
     semanticGroups.forEach((group, groupIndex) => {
-        const normalized = normalizeWhitespace(group);
+        const normalized = normalizeWhitespace(group.content);
         if (!normalized) {
             return;
         }
@@ -50,6 +75,7 @@ export const buildChunks = (text) => {
                 tokenCount: tokenizeEstimate(content),
                 charStart,
                 charEnd,
+                sectionTitle: group.sectionTitle,
                 window: {
                     semanticGroup: groupIndex,
                     overlapFrom: Math.max(start - OVERLAP_CHARS, 0)

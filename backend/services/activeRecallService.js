@@ -5,6 +5,7 @@ import { masteryRepository } from '../repositories/masteryRepository.js';
 import { generateJson } from './aiService.js';
 import { recordLearningInteraction } from './analyticsService.js';
 import { updateConceptMastery } from './masteryService.js';
+import { trackActivity } from './activityService.js';
 
 const createQuestionPrompt = (concept) => `You are an active recall tutor.
 Create one conceptual free-response question for this concept.
@@ -94,6 +95,19 @@ export const answerActiveRecall = async ({ sessionId, userId, answer }) => {
         timeSpentSeconds: 180,
         tutorSessions: 1,
         completionDelta: exchange.score * 0.03
+    });
+
+    await trackActivity({
+        userId,
+        documentId: session.document,
+        type: 'recall-session',
+        title: 'Active recall session updated',
+        description: `You scored ${Math.round(exchange.score * 100)}% on an active recall response.`,
+        metadata: {
+            sessionId: session._id,
+            conceptId: session.concept._id,
+            score: exchange.score
+        }
     });
 
     return session;

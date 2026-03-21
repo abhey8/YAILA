@@ -189,6 +189,14 @@ export default function Dashboard() {
                 <span>Total study time</span>
                 <span className="text-[var(--foreground)]">{Math.round((stats?.totalStudyTimeSeconds ?? 0) / 60)} min</span>
               </div>
+              <div className="flex items-center justify-between">
+                <span>Learning progress</span>
+                <span className="text-[var(--foreground)]">{stats?.progressOverview?.learningProgressPercent ?? 0}%</span>
+              </div>
+              <div className="flex items-center justify-between">
+                <span>Study streak</span>
+                <span className="text-[var(--foreground)]">{stats?.progressOverview?.studyStreakDays ?? 0} days</span>
+              </div>
             </div>
           </GlassCard>
 
@@ -214,6 +222,26 @@ export default function Dashboard() {
                   <div className="text-sm text-[var(--muted-foreground)]">{action.description}</div>
                 </button>
               ))}
+            </div>
+          </GlassCard>
+
+          <GlassCard className="p-6">
+            <div className="mb-4">
+              <h3 className="text-xl font-bold text-[var(--foreground)]">Recent Activity</h3>
+              <p className="text-sm text-[var(--muted-foreground)]">Live timeline from your study actions</p>
+            </div>
+            <div className="space-y-3">
+              {(stats?.recentActivity || []).length ? stats.recentActivity.map((item: any) => (
+                <div key={item.id} className="study-panel-quiet rounded-2xl p-4">
+                  <div className="font-medium text-[var(--foreground)]">{item.title}</div>
+                  <div className="text-sm text-[var(--muted-foreground)]">{item.description}</div>
+                  {item.document ? (
+                    <div className="text-xs text-[var(--accent-primary)] mt-1">{item.document.title}</div>
+                  ) : null}
+                </div>
+              )) : (
+                <div className="text-sm text-[var(--muted-foreground)]">No recent activity yet.</div>
+              )}
             </div>
           </GlassCard>
         </motion.div>

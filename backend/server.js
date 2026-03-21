@@ -18,6 +18,8 @@ import graphRoutes from './routes/graphRoutes.js';
 import roadmapRoutes from './routes/roadmapRoutes.js';
 import conceptRoutes from './routes/conceptRoutes.js';
 import recallRoutes from './routes/recallRoutes.js';
+import activityRoutes from './routes/activityRoutes.js';
+import notificationRoutes from './routes/notificationRoutes.js';
 
 const app = express();
 
@@ -35,6 +37,8 @@ app.use('/api/graph', graphRoutes);
 app.use('/api/roadmaps', roadmapRoutes);
 app.use('/api/concepts', conceptRoutes);
 app.use('/api/recall', recallRoutes);
+app.use('/api/activity', activityRoutes);
+app.use('/api/notifications', notificationRoutes);
 
 app.get('/api/health', (req, res) => {
     res.json({ status: 'ok', message: 'API is healthy' });

@@ -3,6 +3,8 @@ import Flashcard from '../models/Flashcard.js';
 import QuizAttempt from '../models/QuizAttempt.js';
 import { asyncHandler } from '../lib/asyncHandler.js';
 import { progressRepository } from '../repositories/progressRepository.js';
+import { listRecentActivity } from '../services/activityService.js';
+import { getProfileAnalytics } from '../services/profileAnalyticsService.js';
 
 export const getDashboardStats = asyncHandler(async (req, res) => {
     const userId = req.user._id;
@@ -24,6 +26,8 @@ export const getDashboardStats = asyncHandler(async (req, res) => {
         .sort({ createdAt: -1 })
         .limit(5)
         .select('title createdAt ingestionStatus chunkCount conceptCount');
+    const recentActivity = await listRecentActivity(userId, { limit: 6, page: 1 });
+    const profileAnalytics = await getProfileAnalytics(userId);
 
     res.json({
         totalDocuments,
@@ -32,6 +36,19 @@ export const getDashboardStats = asyncHandler(async (req, res) => {
         avgQuizScore,
         totalStudyTimeSeconds: progress.totalStudyTimeSeconds,
         trackedDocuments: progress.documents.length,
-        recentDocuments
+        recentDocuments,
+        recentActivity: recentActivity.items,
+        progressOverview: {
+            masteryScore: profileAnalytics.metrics.masteryScore,
+            topicCoveragePercent: profileAnalytics.metrics.topicCoveragePercent,
+            consistencyPercent: profileAnalytics.metrics.consistencyPercent,
+            learningProgressPercent: profileAnalytics.metrics.learningProgressPercent,
+            studyStreakDays: profileAnalytics.metrics.studyStreakDays
+        }
     });
+});
+
+export const getDashboardProfileAnalytics = asyncHandler(async (req, res) => {
+    const analytics = await getProfileAnalytics(req.user._id);
+    res.json(analytics);
 });

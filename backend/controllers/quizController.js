@@ -6,12 +6,18 @@ import { generateAdaptiveQuiz, submitAdaptiveQuizAttempt } from '../services/qui
 
 export const generateQuiz = asyncHandler(async (req, res) => {
     const { count = 5 } = req.body;
-    const document = await documentRepository.findOwnedDocument(req.params.id, req.user._id);
-    if (!document) {
-        throw new AppError('Document not found', 404, 'DOCUMENT_NOT_FOUND');
+    const isCollection = req.params.id === 'collection';
+    const documents = isCollection
+        ? await documentRepository.listOwnedDocumentsByIds(req.user._id, req.body.documentIds || [])
+        : [await documentRepository.findOwnedDocument(req.params.id, req.user._id)].filter(Boolean);
+    if (!documents.length) {
+        throw new AppError(isCollection ? 'No documents found for quiz generation' : 'Document not found', 404, 'DOCUMENT_NOT_FOUND');
     }
 
-    const quiz = await generateAdaptiveQuiz(document, req.user._id, count);
+    const fullDocuments = await Promise.all(
+        documents.map((document) => documentRepository.findOwnedDocument(document._id, req.user._id))
+    );
+    const quiz = await generateAdaptiveQuiz(fullDocuments.filter(Boolean), req.user._id, count);
     res.status(201).json(quiz);
 });
 

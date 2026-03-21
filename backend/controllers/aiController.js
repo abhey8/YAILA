@@ -6,7 +6,7 @@ import { documentRepository } from '../repositories/documentRepository.js';
 import { chunkRepository } from '../repositories/chunkRepository.js';
 import { conceptRepository } from '../repositories/conceptRepository.js';
 import { generateText } from '../services/aiService.js';
-import { chatWithDocument } from '../services/chatService.js';
+import { chatWithDocuments } from '../services/chatService.js';
 import { predictConfusion } from '../services/confusionService.js';
 
 export const summarizeDocument = asyncHandler(async (req, res) => {
@@ -73,8 +73,29 @@ export const chatDocument = asyncHandler(async (req, res) => {
         throw new AppError('Document not found', 404, 'DOCUMENT_NOT_FOUND');
     }
 
-    const result = await chatWithDocument({
-        document,
+    const result = await chatWithDocuments({
+        documents: [document],
+        userId: req.user._id,
+        message,
+        history
+    });
+
+    res.json(result);
+});
+
+export const chatDocumentCollection = asyncHandler(async (req, res) => {
+    const { message, history, documentIds = [] } = req.body;
+    const documents = await documentRepository.listOwnedDocumentsByIds(req.user._id, documentIds);
+    if (!documents.length) {
+        throw new AppError('No documents available for this query', 404, 'DOCUMENTS_NOT_FOUND');
+    }
+
+    const fullDocuments = await Promise.all(
+        documents.map((document) => documentRepository.findOwnedDocument(document._id, req.user._id))
+    );
+
+    const result = await chatWithDocuments({
+        documents: fullDocuments.filter(Boolean),
         userId: req.user._id,
         message,
         history
@@ -86,6 +107,27 @@ export const chatDocument = asyncHandler(async (req, res) => {
 export const getChatHistory = asyncHandler(async (req, res) => {
     const history = await ChatHistory.findOne({ document: req.params.id, user: req.user._id });
     res.json(history ? history.messages : []);
+});
+
+export const getCollectionChatHistory = asyncHandler(async (req, res) => {
+    const documentIds = (req.query.documentIds || '')
+        .split(',')
+        .map((value) => value.trim())
+        .filter(Boolean);
+
+    if (!documentIds.length) {
+        res.json([]);
+        return;
+    }
+
+    const history = await ChatHistory.findOne({
+        document: null,
+        user: req.user._id,
+        sourceDocuments: { $all: documentIds }
+    });
+
+    const messages = history?.sourceDocuments?.length === documentIds.length ? history.messages : [];
+    res.json(messages);
 });
 
 export const getConfusionSignals = asyncHandler(async (req, res) => {

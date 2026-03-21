@@ -4,9 +4,10 @@ import { motion } from "motion/react";
 interface ChatMessageProps {
   role: "user" | "assistant";
   content: string;
+  citations?: { documentTitle?: string; sectionTitle?: string }[];
 }
 
-export function ChatMessage({ role, content }: ChatMessageProps) {
+export function ChatMessage({ role, content, citations = [] }: ChatMessageProps) {
   const isUser = role === "user";
 
   return (
@@ -32,6 +33,16 @@ export function ChatMessage({ role, content }: ChatMessageProps) {
             : "study-panel text-[var(--foreground)]"
         }`}>
           <p className="text-sm leading-7 whitespace-pre-wrap">{content}</p>
+          {!isUser && citations.length ? (
+            <div className="mt-3 pt-3 border-t border-[var(--border)] text-xs text-[var(--muted-foreground)]">
+              Sources: {citations.map((citation, index) => (
+                <span key={`${citation.documentTitle}-${citation.sectionTitle}-${index}`}>
+                  {index ? ", " : ""}
+                  {(citation.documentTitle || "Uploaded Document")}{citation.sectionTitle ? ` - ${citation.sectionTitle}` : ""}
+                </span>
+              ))}
+            </div>
+          ) : null}
         </div>
       </div>
     </motion.div>

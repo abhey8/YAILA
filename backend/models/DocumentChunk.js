@@ -5,6 +5,8 @@ const documentChunkSchema = new mongoose.Schema({
     user: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true, index: true },
     chunkIndex: { type: Number, required: true },
     content: { type: String, required: true },
+    contentHash: { type: String, required: true, index: true },
+    sectionTitle: { type: String, default: 'Untitled Section' },
     summary: { type: String, default: '' },
     keywords: [{ type: String }],
     tokenCount: { type: Number, required: true },
@@ -19,5 +21,6 @@ const documentChunkSchema = new mongoose.Schema({
 });
 
 documentChunkSchema.index({ document: 1, chunkIndex: 1 }, { unique: true });
+documentChunkSchema.index({ user: 1, contentHash: 1 });
 
 export default mongoose.model('DocumentChunk', documentChunkSchema);

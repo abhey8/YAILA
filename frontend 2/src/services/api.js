@@ -19,12 +19,19 @@ apiClient.interceptors.request.use((config) => {
 });
 
 export const documentApi = {
-  upload: async (file) => {
+  upload: async (file, onProgress) => {
     const formData = new FormData();
     formData.append('file', file);
     const response = await apiClient.post('/documents', formData, {
       headers: {
         'Content-Type': 'multipart/form-data',
+      },
+      onUploadProgress: (event) => {
+        if (!onProgress || !event.total) {
+          return;
+        }
+
+        onProgress(Math.round((event.loaded / event.total) * 100));
       },
     });
     return response.data;
@@ -46,6 +53,10 @@ export const documentApi = {
 export const dashboardApi = {
   getStats: async () => {
     const response = await apiClient.get('/dashboard/stats');
+    return response.data;
+  },
+  getProfileAnalytics: async () => {
+    const response = await apiClient.get('/dashboard/profile-analytics');
     return response.data;
   },
 };
@@ -108,6 +119,10 @@ export const aiApi = {
     const response = await apiClient.get(`/ai/chat/${documentId}`);
     return response.data;
   },
+  chatCollection: async (message, documentIds = [], history = []) => {
+    const response = await apiClient.post('/ai/chat/collection', { message, documentIds, history });
+    return response.data;
+  },
   getSummary: async (documentId, regenerate = false) => {
     const query = regenerate ? '?regenerate=true' : '';
     const response = await apiClient.get(`/ai/document/${documentId}/summary${query}`);
@@ -133,6 +148,11 @@ export const flashcardApi = {
     const response = await apiClient.post(`/flashcards/generate/${documentId}${query}`, { regenerate });
     return response.data;
   },
+  generateCollection: async (documentIds, regenerate = false) => {
+    const query = regenerate ? '?regenerate=true' : '';
+    const response = await apiClient.post(`/flashcards/generate/collection${query}`, { regenerate, documentIds });
+    return response.data;
+  },
   toggleFavorite: async (flashcardId) => {
     const response = await apiClient.put(`/flashcards/${flashcardId}/favorite`);
     return response.data;
@@ -148,6 +168,10 @@ export const quizApi = {
     const response = await apiClient.post(`/quizzes/generate/${documentId}`, config);
     return response.data;
   },
+  generateCollection: async (documentIds, config) => {
+    const response = await apiClient.post('/quizzes/generate/collection', { ...config, documentIds });
+    return response.data;
+  },
   getByDocument: async (documentId) => {
     const response = await apiClient.get(`/quizzes/document/${documentId}`);
     return response.data;
@@ -158,6 +182,36 @@ export const quizApi = {
   },
   submitAttempt: async (quizId, answers) => {
     const response = await apiClient.post(`/quizzes/${quizId}`, { answers });
+    return response.data;
+  },
+};
+
+export const activityApi = {
+  getRecent: async (params = {}) => {
+    const response = await apiClient.get('/activity/recent', { params });
+    return response.data;
+  },
+  track: async (payload) => {
+    const response = await apiClient.post('/activity/track', payload);
+    return response.data;
+  },
+};
+
+export const notificationApi = {
+  getAll: async (limit = 10) => {
+    const response = await apiClient.get('/notifications', { params: { limit } });
+    return response.data;
+  },
+  getUnreadCount: async () => {
+    const response = await apiClient.get('/notifications/unread-count');
+    return response.data;
+  },
+  markRead: async (notificationId) => {
+    const response = await apiClient.post(`/notifications/${notificationId}/read`);
+    return response.data;
+  },
+  markAllRead: async () => {
+    const response = await apiClient.post('/notifications/read-all');
     return response.data;
   },
 };

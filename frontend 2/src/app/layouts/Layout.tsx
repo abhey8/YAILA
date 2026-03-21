@@ -50,7 +50,7 @@ export function Layout() {
         />
 
         <main className="flex-1 overflow-y-auto p-6">
-          <Outlet context={{ searchQuery, refreshKey }} />
+          <Outlet context={{ searchQuery, refreshKey, openUploadModal: () => setIsUploadModalOpen(true) }} />
         </main>
       </div>
 

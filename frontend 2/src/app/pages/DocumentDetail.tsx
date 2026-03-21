@@ -14,7 +14,7 @@ export default function DocumentDetail() {
   const [document, setDocument] = useState<any | null>(null);
   const [isLoadingDocument, setIsLoadingDocument] = useState(true);
   const [isRefreshingDocument, setIsRefreshingDocument] = useState(false);
-  const [messages, setMessages] = useState<{ role: "assistant" | "user", content: string }[]>([]);
+  const [messages, setMessages] = useState<{ role: "assistant" | "user", content: string, citations?: any[] }[]>([]);
   const [isLoadingHistory, setIsLoadingHistory] = useState(false);
   const [flashcards, setFlashcards] = useState<any[]>([]);
   const [isLoadingFlashcards, setIsLoadingFlashcards] = useState(false);
@@ -52,6 +52,7 @@ export default function DocumentDetail() {
         const formattedHistory = (history || []).map((item: any) => ({
           role: item.role === "ai" ? "assistant" : "user",
           content: item.content,
+          citations: item.citations || [],
         }));
 
         setMessages(formattedHistory);
@@ -85,6 +86,7 @@ export default function DocumentDetail() {
           const formattedHistory = (history || []).map((item: any) => ({
             role: item.role === "ai" ? "assistant" : "user",
             content: item.content,
+            citations: item.citations || [],
           }));
           setMessages(formattedHistory);
           const flashcardData = await flashcardApi.getByDocument(id);
@@ -110,7 +112,7 @@ export default function DocumentDetail() {
   const handleSendMessage = async () => {
     if (!chatInput.trim() || !id || !isDocumentReady) return;
 
-    const userMessage: { role: "user" | "assistant", content: string } = { role: "user", content: chatInput };
+    const userMessage: { role: "user" | "assistant", content: string, citations?: any[] } = { role: "user", content: chatInput };
     const historyForApi = messages.map((message) => ({
       role: message.role === "assistant" ? "ai" : "user",
       content: message.content,
@@ -121,9 +123,10 @@ export default function DocumentDetail() {
 
     try {
       const response = await aiApi.chat(id, userMessage.content, historyForApi);
-      const aiResponse: { role: "user" | "assistant", content: string } = {
+      const aiResponse: { role: "user" | "assistant", content: string, citations?: any[] } = {
         role: "assistant",
         content: response.reply || response.content || 'Something went wrong',
+        citations: response.citations || [],
       };
       setMessages(prev => [...prev, aiResponse]);
     } catch (err) {
@@ -240,6 +243,11 @@ export default function DocumentDetail() {
               Status: {document.ingestionStatus}
               {isRefreshingDocument ? " • refreshing..." : ""}
             </p>
+            {document?.ingestionProgress?.stage && document.ingestionStatus !== "completed" ? (
+              <p className="text-sm mt-1 text-[var(--muted-foreground)]">
+                Stage: {document.ingestionProgress.stage} • {document.ingestionProgress.progressPercent || 0}% • {document.ingestionProgress.processedChunks || 0}/{document.ingestionProgress.totalChunks || 0} chunks
+              </p>
+            ) : null}
             {document.ingestionStatus !== "completed" ? (
               <p className="text-sm mt-1 text-[var(--warning)]">
                 AI features will unlock after document processing completes.
@@ -282,7 +290,7 @@ export default function DocumentDetail() {
                   </div>
                 )}
                 {messages.map((msg, idx) => (
-                  <ChatMessage key={idx} role={msg.role} content={msg.content} />
+                  <ChatMessage key={idx} role={msg.role} content={msg.content} citations={msg.citations} />
                 ))}
               </div>
 

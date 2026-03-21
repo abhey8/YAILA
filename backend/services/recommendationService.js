@@ -1,8 +1,11 @@
 import { chunkRepository } from '../repositories/chunkRepository.js';
 import { masteryRepository } from '../repositories/masteryRepository.js';
 
-export const getRevisionRecommendations = async (userId, documentId) => {
-    const weakConcepts = await masteryRepository.listWeakConcepts(userId, documentId);
+export const getRevisionRecommendations = async (userId, documentIds) => {
+    const ids = Array.isArray(documentIds) ? documentIds : [documentIds];
+    const weakConcepts = ids.length === 1
+        ? await masteryRepository.listWeakConcepts(userId, ids[0])
+        : await masteryRepository.listWeakConceptsByDocuments(userId, ids);
     const recommendations = [];
 
     for (const mastery of weakConcepts.slice(0, 5)) {

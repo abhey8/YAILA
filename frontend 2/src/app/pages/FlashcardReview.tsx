@@ -4,7 +4,7 @@ import { useLocation, useNavigate } from "react-router";
 import { FlashcardComponent } from "../components/FlashcardComponent";
 import { motion, AnimatePresence } from "motion/react";
 import { toast } from "sonner";
-import { flashcardApi } from "../../services/api";
+import { activityApi, flashcardApi } from "../../services/api";
 
 export default function FlashcardReview() {
   const navigate = useNavigate();
@@ -24,6 +24,15 @@ export default function FlashcardReview() {
           ? await flashcardApi.getByDocument(documentId)
           : await flashcardApi.getFavorites();
         setFlashcards(data || []);
+        if (documentId) {
+          await activityApi.track({
+            type: "flashcards-reviewed",
+            title: "Flashcards reviewed",
+            description: "A document flashcard review session was started.",
+            documentId,
+            metadata: { count: data?.length || 0 },
+          });
+        }
       } catch (error) {
         toast.error("Failed to load flashcards");
       } finally {

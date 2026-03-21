@@ -3,7 +3,7 @@ import { useEffect, useState } from "react";
 import { toast } from "sonner";
 import { EmptyState } from "../components/EmptyState";
 import { GlassCard } from "../components/GlassCard";
-import { documentApi, roadmapApi } from "../../services/api";
+import { activityApi, documentApi, roadmapApi } from "../../services/api";
 
 export default function LearningRoadmap() {
   const [documents, setDocuments] = useState<any[]>([]);
@@ -40,6 +40,16 @@ export default function LearningRoadmap() {
       try {
         const data = await roadmapApi.getRoadmap(selectedDocumentId);
         setRoadmap(data);
+        await activityApi.track({
+          type: "roadmap-progress",
+          title: "Roadmap opened",
+          description: "A learning roadmap was viewed.",
+          documentId: selectedDocumentId,
+          metadata: {
+            roadmapId: data?._id || null,
+            itemCount: data?.items?.length || 0,
+          },
+        });
       } catch (error) {
         setRoadmap(null);
       }

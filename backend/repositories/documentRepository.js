@@ -7,6 +7,8 @@ export const documentRepository = {
     findOwnedDocument: (documentId, userId) => Document.findOne({ _id: documentId, user: userId }),
     findOwnedDocumentSummary: (documentId, userId) =>
         Document.findOne({ _id: documentId, user: userId }).select(documentSummaryProjection),
+    listOwnedDocumentsByIds: (userId, documentIds) =>
+        Document.find({ user: userId, _id: { $in: documentIds } }).select(documentSummaryProjection),
     listOwnedDocuments: (userId) =>
         Document.find({ user: userId }).select(documentSummaryProjection).sort('-createdAt'),
     create: (payload) => Document.create(payload),

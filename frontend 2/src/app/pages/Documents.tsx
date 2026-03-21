@@ -10,10 +10,11 @@ import { documentApi } from "../../services/api";
 interface OutletContext {
   searchQuery: string;
   refreshKey: number;
+  openUploadModal: () => void;
 }
 
 export default function Documents() {
-  const { searchQuery, refreshKey } = useOutletContext<OutletContext>();
+  const { searchQuery, refreshKey, openUploadModal } = useOutletContext<OutletContext>();
   const navigate = useNavigate();
   const [viewMode, setViewMode] = useState<"grid" | "list">("grid");
   const [documents, setDocuments] = useState<any[]>([]);
@@ -170,6 +171,10 @@ export default function Documents() {
           icon={Upload}
           title="No documents found"
           description={searchQuery ? `No documents match "${searchQuery}"` : "Upload your first PDF to get started with AI-powered learning"}
+          action={{
+            label: "Upload Document",
+            onClick: openUploadModal
+          }}
         />
       )}
     </div>

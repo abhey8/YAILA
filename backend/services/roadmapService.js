@@ -4,6 +4,8 @@ import { conceptRepository } from '../repositories/conceptRepository.js';
 import { masteryRepository } from '../repositories/masteryRepository.js';
 import { progressRepository } from '../repositories/progressRepository.js';
 import { roadmapRepository } from '../repositories/roadmapRepository.js';
+import { createNotification } from './notificationService.js';
+import { trackActivity } from './activityService.js';
 
 const topologicalPlan = (concepts) => {
     const byId = new Map(concepts.map((concept) => [concept._id.toString(), concept]));
@@ -93,6 +95,30 @@ export const generateRoadmap = async (userId, documentId, reason = 'manual-refre
         userDocumentProgress.currentRoadmap = roadmap._id;
     }
     await progressRepository.save(progress);
+
+    await trackActivity({
+        userId,
+        documentId,
+        type: 'roadmap-regenerated',
+        title: 'Learning roadmap updated',
+        description: `A new roadmap was generated for ${ordered.length} priority concepts.`,
+        metadata: {
+            roadmapId: roadmap._id,
+            reason
+        }
+    });
+
+    await createNotification({
+        userId,
+        documentId,
+        type: 'roadmap-regenerated',
+        title: 'Roadmap regenerated',
+        message: 'Your learning roadmap has been updated with the latest mastery data.',
+        metadata: {
+            roadmapId: roadmap._id,
+            reason
+        }
+    });
 
     return roadmapRepository.findLatestForDocument(userId, documentId);
 };
