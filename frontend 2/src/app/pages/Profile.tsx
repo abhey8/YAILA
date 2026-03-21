@@ -13,6 +13,7 @@ export default function Profile() {
   const [showPasswordChange, setShowPasswordChange] = useState(false);
   const [analytics, setAnalytics] = useState<any | null>(null);
   const [isLoadingAnalytics, setIsLoadingAnalytics] = useState(true);
+  const [isUploadingPhoto, setIsUploadingPhoto] = useState(false);
 
   const [formData, setFormData] = useState({
     name: "",
@@ -86,6 +87,37 @@ export default function Profile() {
     }
   };
 
+  const handleProfilePicUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    try {
+      setIsUploadingPhoto(true);
+      const uploadData = new FormData();
+      uploadData.append("profilePic", file);
+
+      const response = await fetch(`${API_BASE_URL}/auth/profile/photo`, {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+        body: uploadData,
+      });
+
+      const updatedData = await response.json();
+      if (!response.ok) throw new Error(updatedData.message || "Failed to upload photo");
+
+      updateUser(updatedData);
+      setFormData(prev => ({ ...prev, profilePic: updatedData.profilePic }));
+      toast.success("Profile photo updated successfully!");
+    } catch (err: any) {
+      toast.error(err.message || "Photo upload failed");
+    } finally {
+      setIsUploadingPhoto(false);
+      e.target.value = '';
+    }
+  };
+
   const handleChangePassword = async () => {
     if (passwordData.new !== passwordData.confirm) {
       toast.error("New passwords don't match");
@@ -154,11 +186,17 @@ export default function Profile() {
                 user?.name ? user.name.charAt(0).toUpperCase() : "U"
               )}
             </div>
+            <input 
+              type="file" 
+              accept="image/*" 
+              className="hidden" 
+              id="profilePhotoInput" 
+              onChange={handleProfilePicUpload} 
+              disabled={isUploadingPhoto}
+            />
             <button
-              onClick={() => {
-                const url = prompt("Enter an image URL for your profile picture:");
-                if (url) setFormData({ ...formData, profilePic: url });
-              }}
+              onClick={() => document.getElementById("profilePhotoInput")?.click()}
+              disabled={isUploadingPhoto}
               className="absolute bottom-0 right-0 w-8 h-8 study-button-primary rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"
             >
               <Camera className="w-4 h-4" />

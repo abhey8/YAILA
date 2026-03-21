@@ -46,10 +46,11 @@ export function TopBar({ onSearch, onMenuClick, isSidebarOpen }: TopBarProps) {
   const handleMarkAsRead = async (notificationId: string) => {
     await notificationApi.markRead(notificationId);
     await loadNotifications();
+    setNotificationsOpen(false);
   };
 
   return (
-    <header className="bg-[var(--glass-background)] backdrop-blur-md border-b border-[var(--glass-border)] px-6 py-4">
+    <header className="bg-[var(--glass-background)] backdrop-blur-md border-b border-[var(--glass-border)] px-6 py-4 relative z-50">
       <div className="flex items-center gap-4">
         <button
           onClick={onMenuClick}
@@ -95,15 +96,23 @@ export function TopBar({ onSearch, onMenuClick, isSidebarOpen }: TopBarProps) {
               <div className="absolute right-0 mt-3 w-[24rem] max-w-[24rem] study-panel rounded-2xl p-3 z-50">
                 <div className="flex items-center justify-between mb-3">
                   <h3 className="text-sm font-semibold text-[var(--foreground)]">Notifications</h3>
-                  <button
-                    onClick={async () => {
-                      await notificationApi.markAllRead();
-                      await loadNotifications();
-                    }}
-                    className="text-xs text-[var(--accent-primary)] hover:opacity-80"
-                  >
-                    Mark all read
-                  </button>
+                  <div className="flex gap-4">
+                    <button
+                      onClick={async () => {
+                        await notificationApi.markAllRead();
+                        await loadNotifications();
+                      }}
+                      className="text-xs text-[var(--accent-primary)] hover:opacity-80"
+                    >
+                      Mark all read
+                    </button>
+                    <button
+                      onClick={() => setNotificationsOpen(false)}
+                      className="text-xs text-[var(--muted-foreground)] hover:text-[var(--foreground)]"
+                    >
+                      Close
+                    </button>
+                  </div>
                 </div>
                 <div className="space-y-2 max-h-80 overflow-y-auto pr-1">
                   {notifications.length ? notifications.map((item) => (

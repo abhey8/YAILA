@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { useParams, useNavigate } from "react-router";
-import { ArrowLeft, Clock, Flag, Loader2 } from "lucide-react";
+import { ArrowLeft, Clock, Flag, Loader2, ChevronDown, ChevronUp } from "lucide-react";
 import { QuizQuestionCard } from "../components/QuizQuestionCard";
 import { motion } from "motion/react";
 import { quizApi } from "../../services/api";
@@ -20,6 +20,7 @@ export default function QuizAttempt() {
   const [answers, setAnswers] = useState<number[]>([]);
   const [questions, setQuestions] = useState<Question[]>([]);
   const [loading, setLoading] = useState(true);
+  const [isNavOpen, setIsNavOpen] = useState(false);
 
   useEffect(() => {
     if (!id) return;
@@ -182,25 +183,42 @@ export default function QuizAttempt() {
         </div>
       </div>
 
-      <div className="bg-white rounded-xl border border-gray-200 p-6">
-        <h3 className="font-semibold text-gray-900 mb-4">Question Navigation</h3>
-        <div className="grid grid-cols-5 md:grid-cols-10 gap-2">
-          {questions.map((_, index) => (
-            <button
-              key={index}
-              onClick={() => setCurrentQuestion(index)}
-              className={`aspect-square rounded-lg font-medium transition-colors ${
-                currentQuestion === index
-                  ? "bg-indigo-600 text-white"
-                  : answers[index] !== undefined
-                  ? "bg-green-100 text-green-700 border border-green-300"
-                  : "bg-gray-100 text-gray-600 border border-gray-300 hover:bg-gray-200"
-              }`}
-            >
-              {index + 1}
-            </button>
-          ))}
-        </div>
+      <div className="bg-[var(--glass-background)] rounded-xl border border-[var(--glass-border)] overflow-hidden mt-8">
+        <button 
+          onClick={() => setIsNavOpen(!isNavOpen)}
+          className="w-full flex items-center justify-between p-4 bg-[var(--secondary)]/30 hover:bg-[var(--secondary)]/50 transition-colors"
+        >
+          <div className="flex items-center gap-2">
+            <h3 className="font-semibold text-[var(--foreground)] text-sm">Question Navigation</h3>
+            <span className="text-xs text-[var(--muted-foreground)]">
+              {answers.filter(a => a !== undefined).length} / {questions.length} answered
+            </span>
+          </div>
+          {isNavOpen ? <ChevronUp className="w-5 h-5 text-[var(--muted-foreground)]" /> : <ChevronDown className="w-5 h-5 text-[var(--muted-foreground)]" />}
+        </button>
+        
+        {isNavOpen && (
+          <div className="p-4 border-t border-[var(--glass-border)]">
+            <div className="flex flex-wrap gap-2">
+              {questions.map((_, index) => (
+                <button
+                  key={index}
+                  onClick={() => setCurrentQuestion(index)}
+                  className={`w-8 h-8 flex items-center justify-center rounded-md font-medium text-xs transition-colors ${
+                    currentQuestion === index
+                      ? "bg-[var(--accent-primary)] text-white shadow-sm"
+                      : answers[index] !== undefined
+                      ? "bg-[var(--success)]/20 text-[var(--success)] border border-[var(--success)]/30"
+                      : "bg-[var(--secondary)] text-[var(--muted-foreground)] border border-[var(--border)] hover:border-[var(--accent-primary)]/50 hover:text-[var(--foreground)]"
+                  }`}
+                  title={`Question ${index + 1}`}
+                >
+                  {index + 1}
+                </button>
+              ))}
+            </div>
+          </div>
+        )}
       </div>
     </div>
   );

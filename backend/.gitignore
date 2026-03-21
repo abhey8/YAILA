@@ -7,3 +7,4 @@ build/
 coverage/
 *.log
 .DS_Store
+server_log.txt

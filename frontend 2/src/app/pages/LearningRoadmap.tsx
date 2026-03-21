@@ -1,4 +1,5 @@
-import { Map } from "lucide-react";
+import { Map, CheckCircle, ChevronDown, ChevronUp, BookOpen, Layers, MessageSquare } from "lucide-react";
+import { Link } from "react-router";
 import { useEffect, useState } from "react";
 import { toast } from "sonner";
 import { EmptyState } from "../components/EmptyState";
@@ -11,6 +12,24 @@ export default function LearningRoadmap() {
   const [roadmap, setRoadmap] = useState<any | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isRegenerating, setIsRegenerating] = useState(false);
+  const [expandedItemOrder, setExpandedItemOrder] = useState<number | null>(null);
+
+  const handleToggleStatus = async (order: number, status: string) => {
+    if (!selectedDocumentId) return;
+    try {
+      await roadmapApi.updateItemStatus(selectedDocumentId, order, status);
+      // Update local state smoothly
+      setRoadmap((prev: any) => ({
+        ...prev,
+        items: prev.items.map((item: any) => 
+          item.order === order ? { ...item, status } : item
+        )
+      }));
+      toast.success(status === 'completed' ? "Marked as covered" : "Marked as pending");
+    } catch (error) {
+      toast.error("Failed to update status");
+    }
+  };
 
   useEffect(() => {
     const loadDocuments = async () => {
@@ -118,30 +137,103 @@ export default function LearningRoadmap() {
 
       {roadmap?.items?.length ? (
         <div className="space-y-4">
-          {roadmap.items.map((item: any) => (
-            <GlassCard key={`${item.order}-${item.concept?._id || item.order}`} className="p-6">
-              <div className="flex items-start gap-4">
-                <div className="w-10 h-10 rounded-2xl bg-gradient-to-br from-[var(--accent-primary)] to-[var(--accent-secondary)] text-white flex items-center justify-center">
-                  {item.order}
-                </div>
-                <div className="flex-1">
-                  <div className="text-xl font-semibold text-[var(--foreground)]">{item.concept?.name || "Concept"}</div>
-                  <div className="text-sm text-[var(--muted-foreground)] mt-2">{item.reason}</div>
-                  <div className="text-sm text-[var(--muted-foreground)] mt-2">Estimated time: {item.estimatedMinutes} minutes</div>
-                  <div className="flex flex-wrap gap-2 mt-4">
-                    {(item.recommendedResources || []).map((resource: any, index: number) => (
-                      <span
-                        key={`${resource.label}-${index}`}
-                        className="px-3 py-1 rounded-full bg-[var(--secondary)] text-[var(--foreground)] text-sm border border-[var(--border)]"
-                      >
-                        {resource.label}
+          {roadmap.items.map((item: any) => {
+            const isExpanded = expandedItemOrder === item.order;
+            const isCompleted = item.status === 'completed';
+            
+            return (
+            <GlassCard key={`${item.order}-${item.concept?._id || item.order}`} className={`p-0 overflow-hidden transition-all ${isCompleted ? 'opacity-70' : ''}`}>
+              <div 
+                className="p-6 cursor-pointer hover:bg-[var(--secondary)]/30 flex items-center justify-between"
+                onClick={() => setExpandedItemOrder(isExpanded ? null : item.order)}
+              >
+                <div className="flex items-center gap-4">
+                  <div className={`w-10 h-10 rounded-2xl flex items-center justify-center text-white ${isCompleted ? 'bg-[var(--success)] shadow-[0_0_15px_rgba(20,184,100,0.5)]' : 'bg-gradient-to-br from-[var(--accent-primary)] to-[var(--accent-secondary)]'}`}>
+                    {isCompleted ? <CheckCircle className="w-5 h-5" /> : item.order}
+                  </div>
+                  <div>
+                    <div className="text-xl font-semibold text-[var(--foreground)] flex items-center gap-3">
+                      {item.concept?.name || "Concept"}
+                      <span className={`text-xs px-2 py-1 rounded-full ${isCompleted ? 'bg-[var(--success)]/20 text-[var(--success)] border border-[var(--success)]/30' : 'bg-[var(--weak)]/20 text-[var(--weak)] border border-[var(--weak)]/30'}`}>
+                        {isCompleted ? "Covered" : "Pending"}
                       </span>
-                    ))}
+                    </div>
+                    <div className="text-sm text-[var(--muted-foreground)] mt-1">Estimated time: {item.estimatedMinutes} minutes</div>
                   </div>
                 </div>
+                <div className="flex items-center gap-4">
+                  <button 
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      handleToggleStatus(item.order, isCompleted ? 'pending' : 'completed');
+                    }}
+                    className={`p-2 rounded-xl border transition-colors ${isCompleted ? 'bg-[var(--success)] border-[var(--success)] text-white' : 'bg-transparent border-[var(--border)] text-[var(--muted-foreground)] hover:border-[var(--accent-primary)] hover:text-[var(--accent-primary)]'}`}
+                    title={isCompleted ? "Mark as incomplete" : "Mark as covered"}
+                  >
+                    <CheckCircle className="w-5 h-5" />
+                  </button>
+                  {isExpanded ? <ChevronUp className="w-5 h-5 text-[var(--muted-foreground)]" /> : <ChevronDown className="w-5 h-5 text-[var(--muted-foreground)]" />}
+                </div>
               </div>
+              
+              {isExpanded && (
+                <div className="px-6 pb-6 pt-2 border-t border-[var(--glass-border)] bg-[var(--glass-background)]">
+                  <div className="mb-4">
+                    <h4 className="text-sm font-medium text-[var(--foreground)] mb-1">Why learn this?</h4>
+                    <p className="text-sm text-[var(--muted-foreground)]">{item.reason}</p>
+                  </div>
+                  
+                  {item.concept?.description && (
+                    <div className="mb-4">
+                      <h4 className="text-sm font-medium text-[var(--foreground)] mb-1">Overview</h4>
+                      <p className="text-sm text-[var(--muted-foreground)]">{item.concept.description}</p>
+                    </div>
+                  )}
+
+                  {item.concept?.keywords?.length > 0 && (
+                    <div className="mb-4">
+                      <h4 className="text-sm font-medium text-[var(--foreground)] mb-2">Key Topics</h4>
+                      <div className="flex flex-wrap gap-2">
+                        {item.concept.keywords.map((kw: string, i: number) => (
+                          <span key={i} className="px-2 py-1 text-xs rounded-md bg-[var(--secondary)] text-[var(--foreground)] border border-[var(--border)]">
+                            {kw}
+                          </span>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
+                  <div>
+                    <h4 className="text-sm font-medium text-[var(--foreground)] mb-3">Recommended Actions</h4>
+                    <div className="flex flex-wrap gap-3">
+                      {(item.recommendedResources || []).map((resource: any, index: number) => {
+                        let linkPath = "";
+                        if (resource.type === "summary") linkPath = `/documents/${selectedDocumentId}?tab=summary`;
+                        if (resource.type === "quiz") linkPath = `/documents/${selectedDocumentId}?tab=quiz`;
+                        if (resource.type === "flashcard") linkPath = `/documents/${selectedDocumentId}?tab=flashcards`;
+                        if (resource.type === "chat") linkPath = `/documents/${selectedDocumentId}?tab=chat`;
+
+                        return (
+                          <Link
+                            key={`${resource.label}-${index}`}
+                            to={linkPath}
+                            className="px-4 py-2 rounded-xl bg-gradient-to-br from-[var(--secondary)] to-[var(--background)] text-[var(--foreground)] text-sm border border-[var(--border)] hover:border-[var(--accent-primary)] hover:shadow-sm transition-all flex items-center gap-2"
+                          >
+                            {resource.type === "summary" && <BookOpen className="w-4 h-4 text-[#3B82F6]" />}
+                            {resource.type === "quiz" && <CheckCircle className="w-4 h-4 text-[#10B981]" />}
+                            {resource.type === "flashcard" && <Layers className="w-4 h-4 text-[#8B5CF6]" />}
+                            {resource.type === "chat" && <MessageSquare className="w-4 h-4 text-[#F59E0B]" />}
+                            {resource.label}
+                          </Link>
+                        );
+                      })}
+                    </div>
+                  </div>
+                </div>
+              )}
             </GlassCard>
-          ))}
+            );
+          })}
         </div>
       ) : (
         <GlassCard className="p-12 text-center text-[var(--muted-foreground)]">

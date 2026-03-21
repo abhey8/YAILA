@@ -79,6 +79,12 @@ export const roadmapApi = {
     });
     return response.data;
   },
+  updateItemStatus: async (documentId, order, status) => {
+    const response = await apiClient.patch(`/roadmaps/document/${documentId}/item/${order}/status`, {
+      status,
+    });
+    return response.data;
+  },
 };
 
 export const recallApi = {

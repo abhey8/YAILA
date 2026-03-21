@@ -2,7 +2,19 @@ import DocumentChunk from '../models/DocumentChunk.js';
 import mongoose from 'mongoose';
 
 export const chunkRepository = {
-    createMany: (chunks) => DocumentChunk.insertMany(chunks),
+    createMany: async (chunks) => {
+        if (!chunks || chunks.length === 0) return [];
+        const operations = chunks.map((chunk) => ({
+            updateOne: {
+                filter: { document: chunk.document, chunkIndex: chunk.chunkIndex },
+                update: { $set: chunk },
+                upsert: true
+            }
+        }));
+        await DocumentChunk.bulkWrite(operations, { ordered: false });
+        // Return chunks back so the caller can check lengths seamlessly
+        return chunks;
+    },
     deleteByDocument: (documentId) => DocumentChunk.deleteMany({ document: documentId }),
     listByDocument: (documentId) => DocumentChunk.find({ document: documentId }).sort({ chunkIndex: 1 }),
     listByDocuments: (documentIds) => DocumentChunk.find({ document: { $in: documentIds } }),

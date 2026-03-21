@@ -135,3 +135,28 @@ export const updateUserProfile = asyncHandler(async (req, res) => {
         profilePic: updatedUser.profilePic
     });
 });
+
+export const uploadProfilePhoto = asyncHandler(async (req, res) => {
+    const user = await User.findById(req.user._id);
+    if (!user) {
+        throw new AppError('User not found', 404, 'USER_NOT_FOUND');
+    }
+    
+    if (!req.file) {
+        throw new AppError('No image file provided', 400, 'NO_FILE_PROVIDED');
+    }
+    
+    const fileUrl = `${req.protocol}://${req.get('host')}/uploads/${req.file.filename}`;
+    
+    user.profilePic = fileUrl;
+    const updatedUser = await user.save();
+    
+    res.json({
+        _id: updatedUser._id,
+        name: updatedUser.name,
+        email: updatedUser.email,
+        age: updatedUser.age,
+        studySpecifications: updatedUser.studySpecifications,
+        profilePic: updatedUser.profilePic
+    });
+});

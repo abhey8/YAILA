@@ -30,6 +30,8 @@ Return a JSON array where each item has:
 
 Rules:
 - Every question must be answerable from the source excerpts only.
+- Focus on technical, academic, or core concepts. 
+- Ignore introductory filler, prefaces, or mentions of "how to use this book".
 - Use multiple documents when relevant.
 - Do not use outside knowledge.
 - Keep explanations specific to the provided excerpts.`;
@@ -67,12 +69,64 @@ export const generateAdaptiveQuiz = async (documents, userId, count = 5) => {
         conceptRepository.listByDocuments(documentIds),
         chunkRepository.listByDocumentsOrdered(documentIds)
     ]);
-    const chunkPool = chunks.slice(0, Math.min(Math.max(count * 4, 12), 24)).map((chunk) => ({
-        ...chunk.toObject(),
-        documentTitle: documents.find((document) => document._id.toString() === chunk.document.toString())?.title
-            || documents.find((document) => document._id.toString() === chunk.document.toString())?.originalName
-            || 'Uploaded Document'
-    }));
+    // Better chunk selection: Skip likely prefatory material and sample across the whole document
+    // Or prioritize chunks that are linked to concepts.
+    
+    // Sort all concepts by importance/priority
+    const prioritizedConcepts = [...concepts].sort((a, b) => (b.importance || 0.5) - (a.importance || 0.5));
+    const conceptChunkIds = new Set();
+    prioritizedConcepts.slice(0, 20).forEach(c => {
+        (c.chunkRefs || []).forEach(ref => conceptChunkIds.add(ref.toString()));
+    });
+
+    const candidateChunks = chunks.filter(c => {
+        const contentUpper = (c.content || '').toUpperCase();
+        const sectionUpper = (c.sectionTitle || '').toUpperCase();
+        // Skip common intro sections if they are long or at the very start
+        const isIntro = sectionUpper.includes('PREFACE') || 
+                        sectionUpper.includes('NOTE TO STUDENTS') || 
+                        sectionUpper.includes('DEDICATION') ||
+                        sectionUpper.includes('ACKNOWLEDGMENT');
+        
+        // If it's a very early chunk (first 1% or first 5 chunks) and contains preface markers, deprioritize
+        if (c.chunkIndex < Math.max(5, chunks.length * 0.01) && isIntro) return false;
+        return true;
+    });
+
+    // Pick chunks: concepts first, then spread across the rest
+    const selectedChunks = [];
+    const usedIds = new Set();
+
+    // 1. Add chunks that contain important concepts
+    candidateChunks.forEach(c => {
+        if (conceptChunkIds.has(c._id.toString())) {
+            selectedChunks.push(c);
+            usedIds.add(c._id.toString());
+        }
+    });
+
+    // 2. If we need more chunks, sample evenly from the remaining pool
+    if (selectedChunks.length < Math.max(count * 4, 18)) {
+        const remaining = candidateChunks.filter(c => !usedIds.has(c._id.toString()));
+        const targetExtra = Math.max(count * 4, 18) - selectedChunks.length;
+        const step = Math.max(1, Math.floor(remaining.length / targetExtra));
+        
+        for (let i = 0; i < remaining.length && selectedChunks.length < 24; i += step) {
+            selectedChunks.push(remaining[i]);
+            usedIds.add(remaining[i]._id.toString());
+        }
+    }
+
+    const chunkPool = selectedChunks
+        .sort((a, b) => a.chunkIndex - b.chunkIndex) // Keep them in logical reading order in the prompt
+        .slice(0, 24)
+        .map((chunk) => ({
+            ...chunk.toObject(),
+            documentTitle: documents.find((document) => document._id.toString() === chunk.document.toString())?.title
+                || documents.find((document) => document._id.toString() === chunk.document.toString())?.originalName
+                || 'Uploaded Document'
+        }));
+
     const questionsData = await generateJson(buildQuizPrompt(documents, concepts, chunkPool, count));
     const conceptByName = new Map(concepts.map((concept) => [concept.name.toLowerCase(), concept]));
     const questionEmbeddings = await embedTexts(questionsData.map((item) => item.question));

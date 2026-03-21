@@ -5,6 +5,7 @@ import { documentRepository } from '../repositories/documentRepository.js';
 import { chunkRepository } from '../repositories/chunkRepository.js';
 import { generateJson } from '../services/aiService.js';
 import { trackActivity } from '../services/activityService.js';
+import { sampleChunksForPrompt } from '../lib/documentContext.js';
 
 const lexicalScore = (needle, haystack) => {
     const tokens = (needle.toLowerCase().match(/[a-z0-9]{3,}/g) || []);
@@ -64,7 +65,7 @@ export const generateFlashcards = asyncHandler(async (req, res) => {
             || sourceDocuments.find((document) => document._id.toString() === chunk.document.toString())?.originalName
             || 'Uploaded Document'
     }));
-    const sampledChunks = chunks.slice(0, 18);
+    const sampledChunks = sampleChunksForPrompt(chunks, 18);
     const prompt = `Create 10 strong study flashcards from these uploaded materials.
 Documents:
 ${sourceDocuments.map((document) => `- ${document.title || document.originalName}`).join('\n')}

@@ -44,6 +44,10 @@ app.get('/api/health', (req, res) => {
     res.json({ status: 'ok', message: 'API is healthy' });
 });
 
+app.get('/api/debug-routes', (req, res) => {
+    res.json(app._router.stack.map(l => l.regexp.toString()));
+});
+
 app.use(notFound);
 app.use(errorHandler);
 

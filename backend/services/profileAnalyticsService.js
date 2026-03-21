@@ -8,10 +8,17 @@ import QuizAttempt from '../models/QuizAttempt.js';
 import { progressRepository } from '../repositories/progressRepository.js';
 import { getUnreadNotificationCount } from './notificationService.js';
 
-const toDayKey = (value) => new Date(value).toISOString().slice(0, 10);
+const toDayKey = (value) => {
+    if (!value) return null;
+    try {
+        return new Date(value).toISOString().slice(0, 10);
+    } catch (e) {
+        return null;
+    }
+};
 
 const computeStreak = (dates) => {
-    const dayKeys = [...new Set(dates.map(toDayKey))].sort().reverse();
+    const dayKeys = [...new Set(dates.map(toDayKey).filter(Boolean))].sort().reverse();
     if (!dayKeys.length) {
         return 0;
     }
