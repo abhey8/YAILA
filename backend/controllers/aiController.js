@@ -42,6 +42,33 @@ const fallbackStructuredSummary = (document, chunks = []) => {
     ].join('\n');
 };
 
+const fallbackTopicExplanation = ({ topic, contextText = '', chunks = [] }) => {
+    const relatedChunks = chunks.slice(0, 3);
+    const contextLines = contextText
+        .split('\n')
+        .filter(Boolean)
+        .slice(0, 4);
+
+    const keyPoints = relatedChunks.map((chunk) => {
+        const text = (chunk.content || '').replace(/\s+/g, ' ').trim();
+        return `- ${text.slice(0, 180)}${text.length > 180 ? '...' : ''}`;
+    });
+
+    return [
+        `Topic: ${topic}`,
+        '',
+        'Core idea:',
+        ...(contextLines.length ? contextLines.map((line) => `- ${line}`) : ['- This topic appears across the uploaded material sections below.']),
+        '',
+        'From your document:',
+        ...(keyPoints.length ? keyPoints : ['- No detailed excerpt was available for this topic yet.']),
+        '',
+        'Dive deeper:',
+        `- Ask: "Give me 3 practice questions on ${topic} from this document."`,
+        `- Ask: "Explain ${topic} with an example from this document."`
+    ].join('\n');
+};
+
 export const summarizeDocument = asyncHandler(async (req, res) => {
     const document = await documentRepository.findOwnedDocument(req.params.id, req.user._id);
     if (!document) {
@@ -94,17 +121,24 @@ ${summarySource}`);
 export const explainText = asyncHandler(async (req, res) => {
     const { text, mode, documentId } = req.body;
     let context = '';
+    let relatedChunks = [];
 
     if (documentId) {
         const document = await documentRepository.findOwnedDocument(documentId, req.user._id);
         if (document) {
             const concepts = await conceptRepository.listByDocument(documentId);
             context = concepts.map((concept) => `${concept.name}: ${concept.description}`).join('\n');
+            relatedChunks = await chunkRepository.listByDocument(documentId);
         }
     }
 
     const complexity = mode === 'deep' ? 'Provide a technical explanation with detail.' : 'Explain simply for a student.';
-    const explanation = await generateText(`${complexity}\n\nQuestion or concept: ${text}\n\nRelevant concept map context:\n${context}`);
+    let explanation = '';
+    try {
+        explanation = await generateText(`${complexity}\n\nQuestion or concept: ${text}\n\nRelevant concept map context:\n${context}`);
+    } catch (error) {
+        explanation = fallbackTopicExplanation({ topic: text, contextText: context, chunks: relatedChunks });
+    }
     res.json({ explanation });
 });
 

@@ -184,6 +184,7 @@ export default function DocumentDetail() {
   }, [id, document?.ingestionStatus, activeTab, topicFocus]);
 
   const isDocumentReady = document?.ingestionStatus === "completed";
+  const isTopicFlow = Boolean(topicFocus.trim());
 
   const updateTabQuery = (tab: "chat" | "summary" | "flashcards" | "quiz") => {
     const params = new URLSearchParams(searchParams);
@@ -232,6 +233,23 @@ export default function DocumentDetail() {
       toast.error("Failed to generate summary");
     } finally {
       setIsGenerating(false);
+    }
+  };
+
+  const handleGenerateTopicSummary = async () => {
+    if (!id || !isDocumentReady || !topicFocus.trim()) return;
+    setIsGeneratingTopicExplanation(true);
+    try {
+      const response = await aiApi.explain({
+        text: topicFocus,
+        mode: "deep",
+        documentId: id,
+      });
+      setTopicExplanation(response?.explanation || "");
+    } catch (error) {
+      toast.error("Failed to generate topic summary");
+    } finally {
+      setIsGeneratingTopicExplanation(false);
     }
   };
 
@@ -420,17 +438,24 @@ export default function DocumentDetail() {
 
           {activeTab === "summary" && (
             <div className="space-y-6">
-              {topicFocus ? (
+              {isTopicFlow ? (
                 <div className="p-4 rounded-lg border border-[var(--accent-primary)]/30 bg-[var(--accent-soft)]/40">
-                  <h3 className="text-lg font-semibold text-[var(--foreground)] mb-2">Topic Focus: {topicFocus}</h3>
+                  <h3 className="text-lg font-semibold text-[var(--foreground)] mb-2">Topic Summary: {topicFocus}</h3>
                   {isGeneratingTopicExplanation ? (
-                    <p className="text-[var(--muted-foreground)]">Generating topic explanation...</p>
+                    <p className="text-[var(--muted-foreground)]">Generating topic summary...</p>
                   ) : topicExplanation ? (
                     <p className="text-[var(--foreground-soft)] leading-7 whitespace-pre-wrap">{topicExplanation}</p>
                   ) : (
-                    <p className="text-[var(--muted-foreground)]">No topic explanation generated yet.</p>
+                    <p className="text-[var(--muted-foreground)]">Topic summary is not ready yet.</p>
                   )}
                   <div className="mt-4 flex flex-wrap gap-3">
+                    <button
+                      onClick={handleGenerateTopicSummary}
+                      disabled={isGeneratingTopicExplanation || !isDocumentReady}
+                      className="px-4 py-2 rounded-lg study-button-primary"
+                    >
+                      {isGeneratingTopicExplanation ? "Generating..." : "Dive Deeper"}
+                    </button>
                     <button
                       onClick={() => {
                         setActiveTab("flashcards");
@@ -438,7 +463,7 @@ export default function DocumentDetail() {
                       }}
                       className="px-4 py-2 rounded-lg study-button-secondary"
                     >
-                      Continue to Flashcards
+                      Move to Flashcards
                     </button>
                     <button
                       onClick={() => {
@@ -447,13 +472,12 @@ export default function DocumentDetail() {
                       }}
                       className="px-4 py-2 rounded-lg study-button-primary"
                     >
-                      Continue to Quiz
+                      Move to Quiz
                     </button>
                   </div>
                 </div>
-              ) : null}
-
-              <div>
+              ) : (
+                <div>
                 <h3 className="text-lg font-semibold text-[var(--foreground)] mb-4">Document Summary</h3>
                 {summary ? (
                   <div className="p-6 rounded-lg border border-[var(--accent-primary)]/20 bg-[var(--accent-soft)]">
@@ -480,20 +504,7 @@ export default function DocumentDetail() {
                   </div>
                 )}
               </div>
-
-              <div>
-                <h3 className="text-lg font-semibold text-[var(--foreground)] mb-4">Explain a Concept</h3>
-                <div className="flex gap-3">
-                  <input
-                    type="text"
-                    placeholder="Enter a topic from the document..."
-                    className="flex-1 px-4 py-3 rounded-lg study-input"
-                  />
-                  <button className="px-6 py-3 rounded-lg study-button-secondary">
-                    Explain
-                  </button>
-                </div>
-              </div>
+              )}
             </div>
           )}
 
@@ -503,26 +514,40 @@ export default function DocumentDetail() {
                 <h3 className="text-lg font-semibold text-[var(--foreground)]">
                   {flashcards.length} Flashcards
                 </h3>
-                <div className="flex items-center gap-3">
+                <div className="flex items-center gap-3 flex-wrap justify-end">
+                  {isTopicFlow ? (
+                    <button
+                      onClick={() => {
+                        setActiveTab("summary");
+                        updateTabQuery("summary");
+                      }}
+                      className="px-4 py-2 rounded-lg study-button-secondary"
+                    >
+                      Move Back to Summary
+                    </button>
+                  ) : null}
                   <button
-                    onClick={() => navigate(`/flashcards/review?documentId=${id}`)}
+                    onClick={() => handleGenerateFlashcards(true)}
+                    disabled={isGeneratingFlashcards || !isDocumentReady}
+                    className="px-4 py-2 rounded-lg study-button-primary"
+                  >
+                    {isGeneratingFlashcards ? "Generating..." : "Generate More"}
+                  </button>
+                  <button
+                    onClick={() => {
+                      setActiveTab("quiz");
+                      updateTabQuery("quiz");
+                    }}
                     className="px-4 py-2 rounded-lg study-button-secondary"
                   >
-                    Review
+                    Move to Quiz
                   </button>
                   <button
                     onClick={() => handleGenerateFlashcards(false)}
                     disabled={isGeneratingFlashcards || !isDocumentReady}
-                    className="px-4 py-2 rounded-lg study-button-primary"
-                  >
-                    {isGeneratingFlashcards ? "Generating..." : flashcards.length ? "Regenerate Set" : "Generate"}
-                  </button>
-                  <button
-                    onClick={() => handleGenerateFlashcards(true)}
-                    disabled={isGeneratingFlashcards || !isDocumentReady}
                     className="px-4 py-2 rounded-lg study-button-secondary"
                   >
-                    Generate More
+                    {isGeneratingFlashcards ? "Generating..." : flashcards.length ? "Regenerate Set" : "Generate"}
                   </button>
                 </div>
               </div>
