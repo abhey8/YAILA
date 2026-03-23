@@ -8,7 +8,13 @@ import { updateConceptMastery } from './masteryService.js';
 import { createNotification } from './notificationService.js';
 import { trackActivity } from './activityService.js';
 
-const buildQuizFromConceptsPrompt = (documents, concepts, count) => `Generate a ${count}-question multiple choice quiz from the core extracted study concepts.
+const DIFFICULTY_GUIDANCE = {
+    easy: 'Keep questions direct, definition-based, and single-step.',
+    medium: 'Mix conceptual understanding with applied interpretation.',
+    hard: 'Use deeper reasoning, multi-concept linkage, and tricky distractors that remain fair and document-grounded.'
+};
+
+const buildQuizFromConceptsPrompt = (documents, concepts, count, difficulty) => `Generate a ${count}-question multiple choice quiz from the core extracted study concepts.
 Documents:
 ${documents.map((document) => `- ${document.title || document.originalName}`).join('\n')}
 
@@ -25,9 +31,11 @@ Return a JSON array where each item has:
 Rules:
 - Questions MUST be derived strictly from the provided Concepts list.
 - Do not use outside knowledge.
-- Focus exclusively on technical, academic, or core concept definitions and formulas.`;
+- Focus exclusively on technical, academic, or core concept definitions and formulas.
+- Difficulty level: ${difficulty.toUpperCase()}
+- ${DIFFICULTY_GUIDANCE[difficulty]}`;
 
-const buildQuizFromChunksPrompt = (documents, chunkText, count) => `Generate a ${count}-question multiple choice quiz grounded strictly in the provided document excerpts.
+const buildQuizFromChunksPrompt = (documents, chunkText, count, difficulty) => `Generate a ${count}-question multiple choice quiz grounded strictly in the provided document excerpts.
 Documents:
 ${documents.map((document) => `- ${document.title || document.originalName}`).join('\n')}
 
@@ -44,9 +52,51 @@ Return a JSON array where each item has:
 Rules:
 - Questions must be answerable from the excerpts.
 - Do not use outside knowledge.
-- Keep questions specific and non-repetitive.`;
+- Keep questions specific and non-repetitive.
+- Difficulty level: ${difficulty.toUpperCase()}
+- ${DIFFICULTY_GUIDANCE[difficulty]}`;
 
-export const generateAdaptiveQuiz = async (documents, userId, count = 5) => {
+const normalizeQuestions = (rawQuestions, fallbackCount) => {
+    if (!Array.isArray(rawQuestions)) {
+        return [];
+    }
+
+    return rawQuestions
+        .filter((item) =>
+            item
+            && typeof item.question === 'string'
+            && Array.isArray(item.options)
+            && item.options.length >= 4
+            && typeof item.correctAnswer === 'string'
+        )
+        .slice(0, fallbackCount)
+        .map((item) => {
+            const options = item.options
+                .map((opt) => `${opt}`.trim())
+                .filter(Boolean)
+                .slice(0, 4);
+            const correct = options.includes(item.correctAnswer) ? item.correctAnswer : options[0];
+
+            return {
+                question: `${item.question}`.trim(),
+                options,
+                correctAnswer: correct,
+                explanation: `${item.explanation || ''}`.trim(),
+                conceptNames: Array.isArray(item.conceptNames)
+                    ? item.conceptNames.map((name) => `${name}`.trim()).filter(Boolean).slice(0, 3)
+                    : []
+            };
+        });
+};
+
+const estimateQuizMaxTokens = (count, difficulty) => {
+    const perQuestion = difficulty === 'hard' ? 320 : (difficulty === 'medium' ? 240 : 190);
+    return Math.min(9000, Math.max(1500, 600 + count * perQuestion));
+};
+
+export const generateAdaptiveQuiz = async (documents, userId, options = {}) => {
+    const count = Math.min(20, Math.max(5, Number(options.count) || 5));
+    const difficulty = ['easy', 'medium', 'hard'].includes(options.difficulty) ? options.difficulty : 'medium';
     const documentIds = documents.map((document) => document._id);
     const concepts = await conceptRepository.listByDocuments(documentIds);
 
@@ -55,8 +105,15 @@ export const generateAdaptiveQuiz = async (documents, userId, count = 5) => {
     const targetConcepts = prioritizedConcepts.slice(0, Math.max(count * 3, 15));
 
     let questionsData = [];
+    const generationConfig = {
+        maxTokens: estimateQuizMaxTokens(count, difficulty)
+    };
+
     if (targetConcepts.length > 0) {
-        questionsData = await generateJson(buildQuizFromConceptsPrompt(documents, targetConcepts, count));
+        questionsData = await generateJson(
+            buildQuizFromConceptsPrompt(documents, targetConcepts, count, difficulty),
+            generationConfig
+        );
     } else {
         const chunks = await chunkRepository.listByDocumentsOrdered(documentIds);
         const excerptText = chunks
@@ -67,25 +124,49 @@ export const generateAdaptiveQuiz = async (documents, userId, count = 5) => {
         if (!excerptText.trim()) {
             throw new Error('Quiz cannot be generated because document content is still unavailable.');
         }
-        questionsData = await generateJson(buildQuizFromChunksPrompt(documents, excerptText, count));
+        questionsData = await generateJson(
+            buildQuizFromChunksPrompt(documents, excerptText, count, difficulty),
+            generationConfig
+        );
+    }
+
+    let normalizedQuestions = normalizeQuestions(questionsData, count);
+    if (normalizedQuestions.length < count) {
+        const retryPrompt = `Generate exactly ${count - normalizedQuestions.length} additional unique questions.
+Return JSON array only.
+Avoid repeating any of these existing questions:
+${normalizedQuestions.map((q) => `- ${q.question}`).join('\n')}`;
+        const retryQuestions = await generateJson(
+            `${buildQuizFromConceptsPrompt(documents, targetConcepts.length ? targetConcepts : concepts.slice(0, 20), count - normalizedQuestions.length, difficulty)}\n\n${retryPrompt}`,
+            generationConfig
+        );
+        normalizedQuestions = normalizeQuestions([...normalizedQuestions, ...(Array.isArray(retryQuestions) ? retryQuestions : [])], count);
+    }
+
+    if (!normalizedQuestions.length) {
+        throw new Error('Quiz generation failed. Please retry.');
     }
 
     const conceptByName = new Map(targetConcepts.map((concept) => [concept.name.toLowerCase(), concept]));
     let questionEmbeddings = [];
     try {
-        questionEmbeddings = await embedTexts(questionsData.map((item) => item.question));
+        questionEmbeddings = await embedTexts(normalizedQuestions.map((item) => item.question));
     } catch (error) {
-        questionEmbeddings = questionsData.map(() => []);
+        questionEmbeddings = normalizedQuestions.map(() => []);
     }
 
     return Quiz.create({
         document: documents[0]._id,
         user: userId,
         sourceDocuments: documentIds,
+        config: {
+            count,
+            difficulty
+        },
         title: documents.length === 1
             ? `${documents[0].title} - Adaptive Concept Quiz`
             : 'Multi-Document Adaptive Concept Quiz',
-        questions: questionsData.map((item, index) => ({
+        questions: normalizedQuestions.map((item, index) => ({
             question: item.question,
             options: item.options,
             correctAnswer: item.correctAnswer,

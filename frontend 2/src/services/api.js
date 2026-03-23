@@ -149,9 +149,13 @@ export const flashcardApi = {
     const response = await apiClient.get(`/flashcards/document/${documentId}`);
     return response.data;
   },
-  generate: async (documentId, regenerate = false) => {
-    const query = regenerate ? '?regenerate=true' : '';
-    const response = await apiClient.post(`/flashcards/generate/${documentId}${query}`, { regenerate });
+  generate: async (documentId, { regenerate = false, append = false, count = 10 } = {}) => {
+    const params = new URLSearchParams();
+    if (regenerate) params.set('regenerate', 'true');
+    if (append) params.set('append', 'true');
+    if (count) params.set('count', String(count));
+    const query = params.toString() ? `?${params.toString()}` : '';
+    const response = await apiClient.post(`/flashcards/generate/${documentId}${query}`, { regenerate, append, count });
     return response.data;
   },
   generateCollection: async (documentIds, regenerate = false) => {
@@ -171,7 +175,9 @@ export const flashcardApi = {
 
 export const quizApi = {
   generate: async (documentId, config) => {
-    const response = await apiClient.post(`/quizzes/generate/${documentId}`, config);
+    const count = config?.count || 5;
+    const difficulty = config?.difficulty || 'medium';
+    const response = await apiClient.post(`/quizzes/generate/${documentId}?count=${count}&difficulty=${difficulty}`, config);
     return response.data;
   },
   generateCollection: async (documentIds, config) => {

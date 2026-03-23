@@ -50,8 +50,9 @@ export const generateFlashcards = asyncHandler(async (req, res) => {
     const anchorDocument = sourceDocuments[0];
 
     const shouldRegenerate = req.query.regenerate === 'true' || body.regenerate === true;
+    const appendMode = req.query.append === 'true' || body.append === true;
     const existingFlashcards = await Flashcard.find({ document: anchorDocument._id, user: req.user._id });
-    if (existingFlashcards.length && !shouldRegenerate && !isCollection) {
+    if (existingFlashcards.length && !shouldRegenerate && !appendMode && !isCollection) {
         res.json(existingFlashcards);
         return;
     }
@@ -88,10 +89,24 @@ ${sampledChunks.map((chunk, index) => `Excerpt ${index + 1}
 Document: ${chunk.documentTitle}
 Section: ${chunk.sectionTitle || 'Untitled Section'}
 ${chunk.content}`).join('\n\n')}`;
-    const flashcardsData = await generateJson(prompt);
+    const flashcardsData = await generateJson(prompt, {
+      maxTokens: Math.min(7000, 500 + requestedCount * 220)
+    });
+
+    const existingQuestionSet = new Set(existingFlashcards.map((card) => card.question.trim().toLowerCase()));
+    const newItems = (Array.isArray(flashcardsData) ? flashcardsData : [])
+      .filter((item) => item?.question && item?.answer)
+      .filter((item) => {
+        const key = `${item.question}`.trim().toLowerCase();
+        if (!key || existingQuestionSet.has(key)) {
+          return false;
+        }
+        existingQuestionSet.add(key);
+        return true;
+      });
 
     const flashcards = await Promise.all(
-        flashcardsData.map(async (flashcard) => Flashcard.create({
+        newItems.map(async (flashcard) => Flashcard.create({
             document: anchorDocument._id,
             user: req.user._id,
             sourceDocuments: sourceDocumentIds,
@@ -113,7 +128,13 @@ ${chunk.content}`).join('\n\n')}`;
         }
     });
 
-    res.json(flashcards);
+    if (appendMode) {
+      const merged = await Flashcard.find({ document: anchorDocument._id, user: req.user._id });
+      res.json(merged);
+      return;
+    }
+
+    res.json(flashcards.length ? flashcards : existingFlashcards);
 });
 
 export const getFlashcardsByDocument = asyncHandler(async (req, res) => {

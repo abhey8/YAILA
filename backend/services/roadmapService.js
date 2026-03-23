@@ -76,6 +76,7 @@ export const generateRoadmap = async (userId, documentId, reason = 'manual-refre
             estimatedMinutes: Math.round(20 + (entry.concept.difficulty * 35)),
             recommendedResources: [
                 { type: 'summary', label: `${entry.concept.name} summary` },
+                { type: 'flashcard', label: `${entry.concept.name} flashcards` },
                 { type: 'quiz', label: `${entry.concept.name} practice quiz` },
                 { type: 'chat', label: `Ask AI about ${entry.concept.name}` }
             ]

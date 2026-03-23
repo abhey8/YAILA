@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { useParams, useNavigate } from "react-router";
+import { useParams, useNavigate, useSearchParams } from "react-router";
 import { ArrowLeft, FileText, MessageSquare, BookOpen, Brain, Sparkles } from "lucide-react";
 import { ChatMessage } from "../components/ChatMessage";
 import { FlashcardComponent } from "../components/FlashcardComponent";
@@ -9,6 +9,7 @@ import { aiApi, documentApi, flashcardApi, quizApi } from "../../services/api";
 export default function DocumentDetail() {
   const { id } = useParams();
   const navigate = useNavigate();
+  const [searchParams, setSearchParams] = useSearchParams();
   const [activeTab, setActiveTab] = useState<"chat" | "summary" | "flashcards" | "quiz">("chat");
   const [chatInput, setChatInput] = useState("");
   const [document, setDocument] = useState<any | null>(null);
@@ -22,6 +23,46 @@ export default function DocumentDetail() {
   const [isGenerating, setIsGenerating] = useState(false);
   const [isGeneratingFlashcards, setIsGeneratingFlashcards] = useState(false);
   const [quizCount, setQuizCount] = useState("5");
+  const [quizDifficulty, setQuizDifficulty] = useState("medium");
+  const [flashcardCount, setFlashcardCount] = useState("10");
+  const [topicFocus, setTopicFocus] = useState("");
+  const [topicExplanation, setTopicExplanation] = useState("");
+  const [isGeneratingTopicExplanation, setIsGeneratingTopicExplanation] = useState(false);
+
+  useEffect(() => {
+    const tab = searchParams.get("tab");
+    const topic = searchParams.get("topic") || "";
+    const count = searchParams.get("count");
+    const difficulty = searchParams.get("difficulty");
+    if (tab && ["chat", "summary", "flashcards", "quiz"].includes(tab)) {
+      setActiveTab(tab as "chat" | "summary" | "flashcards" | "quiz");
+    }
+    if (topic) {
+      setTopicFocus(topic);
+    }
+    if (count && ["5", "10", "15", "20"].includes(count)) {
+      setQuizCount(count);
+    }
+    if (difficulty && ["easy", "medium", "hard"].includes(difficulty)) {
+      setQuizDifficulty(difficulty);
+    }
+  }, [searchParams]);
+
+  useEffect(() => {
+    if (!id) return;
+    const raw = localStorage.getItem(`quiz-settings-${id}`);
+    if (!raw) return;
+    try {
+      const parsed = JSON.parse(raw);
+      if (parsed?.count && ["5", "10", "15", "20"].includes(String(parsed.count))) {
+        setQuizCount(String(parsed.count));
+      }
+      if (parsed?.difficulty && ["easy", "medium", "hard"].includes(parsed.difficulty)) {
+        setQuizDifficulty(parsed.difficulty);
+      }
+    } catch (_) {
+    }
+  }, [id]);
 
   const tabs = [
     { id: "chat", label: "AI Chat", icon: MessageSquare },
@@ -107,7 +148,53 @@ export default function DocumentDetail() {
     return () => window.clearInterval(intervalId);
   }, [id, document]);
 
+  useEffect(() => {
+    if (!id || document?.ingestionStatus !== "completed" || activeTab !== "summary" || !topicFocus.trim()) {
+      return;
+    }
+
+    let cancelled = false;
+    const loadTopicExplanation = async () => {
+      try {
+        setIsGeneratingTopicExplanation(true);
+        const response = await aiApi.explain({
+          text: topicFocus,
+          mode: "deep",
+          documentId: id,
+        });
+        if (!cancelled) {
+          setTopicExplanation(response?.explanation || "");
+        }
+      } catch (error) {
+        if (!cancelled) {
+          setTopicExplanation("");
+          toast.error("Failed to generate topic explanation");
+        }
+      } finally {
+        if (!cancelled) {
+          setIsGeneratingTopicExplanation(false);
+        }
+      }
+    };
+
+    loadTopicExplanation();
+    return () => {
+      cancelled = true;
+    };
+  }, [id, document?.ingestionStatus, activeTab, topicFocus]);
+
   const isDocumentReady = document?.ingestionStatus === "completed";
+
+  const updateTabQuery = (tab: "chat" | "summary" | "flashcards" | "quiz") => {
+    const params = new URLSearchParams(searchParams);
+    params.set("tab", tab);
+    if (topicFocus.trim()) {
+      params.set("topic", topicFocus.trim());
+    }
+    params.set("count", quizCount);
+    params.set("difficulty", quizDifficulty);
+    setSearchParams(params, { replace: true });
+  };
 
   const handleSendMessage = async () => {
     if (!chatInput.trim() || !id || !isDocumentReady) return;
@@ -148,14 +235,19 @@ export default function DocumentDetail() {
     }
   };
 
-  const handleGenerateFlashcards = () => {
+  const handleGenerateFlashcards = (append = false) => {
     if (!id || !isDocumentReady) return;
 
     setIsGeneratingFlashcards(true);
-    flashcardApi.generate(id, flashcards.length > 0)
+    const shouldRegenerate = !append && flashcards.length > 0;
+    flashcardApi.generate(id, {
+      regenerate: shouldRegenerate,
+      append,
+      count: Number(flashcardCount) || 10,
+    })
       .then((generated) => {
         setFlashcards(generated || []);
-        toast.success("Flashcards generated from this document");
+        toast.success(append ? "More flashcards generated" : "Flashcards generated from this document");
       })
       .catch((error) => {
         toast.error("Failed to generate flashcards");
@@ -190,7 +282,14 @@ export default function DocumentDetail() {
     if (!id || !isDocumentReady) return;
     setIsGenerating(true);
     try {
-      const quiz = await quizApi.generate(id, { count: parseInt(quizCount) });
+      localStorage.setItem(`quiz-settings-${id}`, JSON.stringify({
+        count: Number(quizCount) || 5,
+        difficulty: quizDifficulty,
+      }));
+      const quiz = await quizApi.generate(id, {
+        count: parseInt(quizCount),
+        difficulty: quizDifficulty,
+      });
       navigate(`/quiz/${quiz._id}`);
     } catch (err) {
        toast.error("Failed to generate quiz. Please try again.");
@@ -267,7 +366,11 @@ export default function DocumentDetail() {
           {tabs.map((tab) => (
             <button
               key={tab.id}
-              onClick={() => setActiveTab(tab.id as any)}
+              onClick={() => {
+                const nextTab = tab.id as "chat" | "summary" | "flashcards" | "quiz";
+                setActiveTab(nextTab);
+                updateTabQuery(nextTab);
+              }}
               className={`flex items-center gap-2 px-6 py-4 font-medium transition-colors whitespace-nowrap ${
                 activeTab === tab.id
                   ? "text-[var(--accent-primary)] border-b-2 border-[var(--accent-primary)]"
@@ -317,6 +420,39 @@ export default function DocumentDetail() {
 
           {activeTab === "summary" && (
             <div className="space-y-6">
+              {topicFocus ? (
+                <div className="p-4 rounded-lg border border-[var(--accent-primary)]/30 bg-[var(--accent-soft)]/40">
+                  <h3 className="text-lg font-semibold text-[var(--foreground)] mb-2">Topic Focus: {topicFocus}</h3>
+                  {isGeneratingTopicExplanation ? (
+                    <p className="text-[var(--muted-foreground)]">Generating topic explanation...</p>
+                  ) : topicExplanation ? (
+                    <p className="text-[var(--foreground-soft)] leading-7 whitespace-pre-wrap">{topicExplanation}</p>
+                  ) : (
+                    <p className="text-[var(--muted-foreground)]">No topic explanation generated yet.</p>
+                  )}
+                  <div className="mt-4 flex flex-wrap gap-3">
+                    <button
+                      onClick={() => {
+                        setActiveTab("flashcards");
+                        updateTabQuery("flashcards");
+                      }}
+                      className="px-4 py-2 rounded-lg study-button-secondary"
+                    >
+                      Continue to Flashcards
+                    </button>
+                    <button
+                      onClick={() => {
+                        setActiveTab("quiz");
+                        updateTabQuery("quiz");
+                      }}
+                      className="px-4 py-2 rounded-lg study-button-primary"
+                    >
+                      Continue to Quiz
+                    </button>
+                  </div>
+                </div>
+              ) : null}
+
               <div>
                 <h3 className="text-lg font-semibold text-[var(--foreground)] mb-4">Document Summary</h3>
                 {summary ? (
@@ -375,13 +511,34 @@ export default function DocumentDetail() {
                     Review
                   </button>
                   <button
-                    onClick={handleGenerateFlashcards}
+                    onClick={() => handleGenerateFlashcards(false)}
                     disabled={isGeneratingFlashcards || !isDocumentReady}
                     className="px-4 py-2 rounded-lg study-button-primary"
                   >
-                    {isGeneratingFlashcards ? "Generating..." : flashcards.length ? "Regenerate" : "Generate"}
+                    {isGeneratingFlashcards ? "Generating..." : flashcards.length ? "Regenerate Set" : "Generate"}
+                  </button>
+                  <button
+                    onClick={() => handleGenerateFlashcards(true)}
+                    disabled={isGeneratingFlashcards || !isDocumentReady}
+                    className="px-4 py-2 rounded-lg study-button-secondary"
+                  >
+                    Generate More
                   </button>
                 </div>
+              </div>
+
+              <div className="max-w-xs">
+                <label className="block text-sm font-medium text-[var(--foreground-soft)] mb-2">Cards per generation</label>
+                <select
+                  value={flashcardCount}
+                  onChange={(e) => setFlashcardCount(e.target.value)}
+                  className="w-full px-4 py-3 rounded-lg study-input"
+                >
+                  <option value="5">5 cards</option>
+                  <option value="10">10 cards</option>
+                  <option value="15">15 cards</option>
+                  <option value="20">20 cards</option>
+                </select>
               </div>
 
               {isLoadingFlashcards ? (
@@ -437,10 +594,14 @@ export default function DocumentDetail() {
                   <label className="block text-sm font-medium text-[var(--foreground-soft)] mb-2 text-left">
                     Difficulty
                   </label>
-                  <select className="w-full px-4 py-3 rounded-lg study-input">
-                    <option>Easy</option>
-                    <option>Medium</option>
-                    <option>Hard</option>
+                  <select
+                    value={quizDifficulty}
+                    onChange={(e) => setQuizDifficulty(e.target.value)}
+                    className="w-full px-4 py-3 rounded-lg study-input"
+                  >
+                    <option value="easy">Easy</option>
+                    <option value="medium">Medium</option>
+                    <option value="hard">Hard</option>
                   </select>
                 </div>
 

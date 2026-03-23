@@ -11,6 +11,8 @@ export const generateQuiz = asyncHandler(async (req, res) => {
     const count = Number.isFinite(queryCount) && queryCount > 0
         ? queryCount
         : (Number.isFinite(bodyCount) && bodyCount > 0 ? bodyCount : 5);
+    const difficultyRaw = `${req.query.difficulty || body.difficulty || 'medium'}`.toLowerCase();
+    const difficulty = ['easy', 'medium', 'hard'].includes(difficultyRaw) ? difficultyRaw : 'medium';
     const isCollection = req.params.id === 'collection';
     const documents = isCollection
         ? await documentRepository.listOwnedDocumentsByIds(req.user._id, body.documentIds || [])
@@ -22,7 +24,7 @@ export const generateQuiz = asyncHandler(async (req, res) => {
     const fullDocuments = await Promise.all(
         documents.map((document) => documentRepository.findOwnedDocument(document._id, req.user._id))
     );
-    const quiz = await generateAdaptiveQuiz(fullDocuments.filter(Boolean), req.user._id, count);
+    const quiz = await generateAdaptiveQuiz(fullDocuments.filter(Boolean), req.user._id, { count, difficulty });
     res.status(201).json(quiz);
 });
 

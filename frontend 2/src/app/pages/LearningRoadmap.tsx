@@ -13,6 +13,9 @@ export default function LearningRoadmap() {
   const [isLoading, setIsLoading] = useState(true);
   const [isRegenerating, setIsRegenerating] = useState(false);
   const [expandedItemOrder, setExpandedItemOrder] = useState<number | null>(null);
+  const completedCount = roadmap?.items?.filter((item: any) => item.status === "completed").length || 0;
+  const totalCount = roadmap?.items?.length || 0;
+  const isChapterCompleted = totalCount > 0 && completedCount === totalCount;
 
   const handleToggleStatus = async (order: number, status: string) => {
     if (!selectedDocumentId) return;
@@ -28,6 +31,23 @@ export default function LearningRoadmap() {
       toast.success(status === 'completed' ? "Marked as covered" : "Marked as pending");
     } catch (error) {
       toast.error("Failed to update status");
+    }
+  };
+
+  const handleChapterToggle = async (nextCompleted: boolean) => {
+    if (!selectedDocumentId || !roadmap?.items?.length) return;
+    const nextStatus = nextCompleted ? "completed" : "pending";
+    try {
+      await Promise.all(
+        roadmap.items.map((item: any) => roadmapApi.updateItemStatus(selectedDocumentId, item.order, nextStatus))
+      );
+      setRoadmap((prev: any) => ({
+        ...prev,
+        items: prev.items.map((item: any) => ({ ...item, status: nextStatus }))
+      }));
+      toast.success(nextCompleted ? "Chapter marked complete" : "Chapter reset to pending");
+    } catch (error) {
+      toast.error("Failed to update chapter status");
     }
   };
 
@@ -137,6 +157,23 @@ export default function LearningRoadmap() {
 
       {roadmap?.items?.length ? (
         <div className="space-y-4">
+          <GlassCard className="p-5">
+            <div className="flex items-center justify-between">
+              <div>
+                <h3 className="text-lg font-semibold text-[var(--foreground)]">Chapter Completion</h3>
+                <p className="text-sm text-[var(--muted-foreground)] mt-1">
+                  {completedCount}/{totalCount} topics completed
+                </p>
+              </div>
+              <button
+                onClick={() => handleChapterToggle(!isChapterCompleted)}
+                className={`px-4 py-2 rounded-xl border transition-colors ${isChapterCompleted ? 'bg-[var(--success)] border-[var(--success)] text-white' : 'bg-transparent border-[var(--border)] text-[var(--muted-foreground)] hover:border-[var(--accent-primary)] hover:text-[var(--accent-primary)]'}`}
+              >
+                {isChapterCompleted ? "Chapter Checked" : "Mark Chapter Complete"}
+              </button>
+            </div>
+          </GlassCard>
+
           {roadmap.items.map((item: any) => {
             const isExpanded = expandedItemOrder === item.order;
             const isCompleted = item.status === 'completed';
@@ -207,11 +244,14 @@ export default function LearningRoadmap() {
                     <h4 className="text-sm font-medium text-[var(--foreground)] mb-3">Recommended Actions</h4>
                     <div className="flex flex-wrap gap-3">
                       {(item.recommendedResources || []).map((resource: any, index: number) => {
+                        const topic = encodeURIComponent(item.concept?.name || "");
+                        const count = 10;
+                        const difficulty = "medium";
                         let linkPath = "";
-                        if (resource.type === "summary") linkPath = `/documents/${selectedDocumentId}?tab=summary`;
-                        if (resource.type === "quiz") linkPath = `/documents/${selectedDocumentId}?tab=quiz`;
-                        if (resource.type === "flashcard") linkPath = `/documents/${selectedDocumentId}?tab=flashcards`;
-                        if (resource.type === "chat") linkPath = `/documents/${selectedDocumentId}?tab=chat`;
+                        if (resource.type === "summary") linkPath = `/documents/${selectedDocumentId}?tab=summary&topic=${topic}&count=${count}&difficulty=${difficulty}`;
+                        if (resource.type === "quiz") linkPath = `/documents/${selectedDocumentId}?tab=quiz&topic=${topic}&count=${count}&difficulty=${difficulty}`;
+                        if (resource.type === "flashcard") linkPath = `/documents/${selectedDocumentId}?tab=flashcards&topic=${topic}&count=${count}&difficulty=${difficulty}`;
+                        if (resource.type === "chat") linkPath = `/documents/${selectedDocumentId}?tab=chat&topic=${topic}&count=${count}&difficulty=${difficulty}`;
 
                         return (
                           <Link

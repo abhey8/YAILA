@@ -2,6 +2,9 @@ import { useLocation, useNavigate, useParams } from "react-router";
 import { ArrowLeft, Trophy, CheckCircle, XCircle, RotateCcw } from "lucide-react";
 import { QuizQuestionCard } from "../components/QuizQuestionCard";
 import { motion } from "motion/react";
+import { useState } from "react";
+import { quizApi } from "../../services/api";
+import { toast } from "sonner";
 
 export default function QuizResult() {
   const location = useLocation();
@@ -11,6 +14,7 @@ export default function QuizResult() {
   const questions = quiz?.questions || [];
   const answers = attempt?.answers || [];
   const documentId = quiz?.document;
+  const [isGeneratingMore, setIsGeneratingMore] = useState(false);
 
   const correctCount = attempt?.score || 0;
   const score = questions.length ? Math.round((correctCount / questions.length) * 100) : 0;
@@ -31,6 +35,26 @@ export default function QuizResult() {
     navigate(-1);
     return null;
   }
+
+  const handleGenerateMore = async () => {
+    if (!documentId) {
+      return;
+    }
+
+    try {
+      setIsGeneratingMore(true);
+      const config = {
+        count: quiz?.config?.count || questions.length || 5,
+        difficulty: quiz?.config?.difficulty || "medium",
+      };
+      const nextQuiz = await quizApi.generate(documentId, config);
+      navigate(`/quiz/${nextQuiz._id}`);
+    } catch (error) {
+      toast.error("Failed to generate another quiz");
+    } finally {
+      setIsGeneratingMore(false);
+    }
+  };
 
   return (
     <div className="max-w-4xl mx-auto space-y-6">
@@ -85,6 +109,30 @@ export default function QuizResult() {
         >
           Back to Document
         </button>
+      </div>
+
+      <div className="bg-[var(--glass-background)] border border-[var(--glass-border)] rounded-xl p-5">
+        <h3 className="text-lg font-semibold text-[var(--foreground)] mb-3">
+          Continue Practice?
+        </h3>
+        <p className="text-[var(--muted-foreground)] mb-4">
+          Generate more questions with the same count and difficulty, or go back to roadmap.
+        </p>
+        <div className="flex flex-wrap gap-3">
+          <button
+            onClick={handleGenerateMore}
+            disabled={isGeneratingMore}
+            className="px-4 py-2 rounded-lg study-button-primary"
+          >
+            {isGeneratingMore ? "Generating..." : "Generate More (Same Settings)"}
+          </button>
+          <button
+            onClick={() => navigate("/roadmap")}
+            className="px-4 py-2 rounded-lg study-button-secondary"
+          >
+            Back to Learning Roadmap
+          </button>
+        </div>
       </div>
 
       <div className="bg-white rounded-xl border border-gray-200 p-6">

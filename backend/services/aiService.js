@@ -191,9 +191,16 @@ export const generateText = async (prompt, config = {}) => {
 };
 
 export const generateJson = async (prompt, config = {}) => {
+    const generationConfig = {
+        ...(config.generationConfig || {}),
+        responseMimeType: 'application/json'
+    };
     const text = await generateText(
         `${prompt}\n\nReturn valid JSON only. Do not wrap in markdown or backticks.`,
-        config
+        {
+            ...config,
+            generationConfig
+        }
     );
 
     try {

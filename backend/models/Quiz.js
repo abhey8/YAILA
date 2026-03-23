@@ -5,6 +5,14 @@ const quizSchema = new mongoose.Schema({
     user: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
     sourceDocuments: [{ type: mongoose.Schema.Types.ObjectId, ref: 'Document' }],
     title: { type: String, required: true },
+    config: {
+        count: { type: Number, default: 5 },
+        difficulty: {
+            type: String,
+            enum: ['easy', 'medium', 'hard'],
+            default: 'medium'
+        }
+    },
     questions: [{
         question: { type: String, required: true },
         options: [{ type: String, required: true }],
