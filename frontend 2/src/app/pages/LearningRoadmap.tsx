@@ -250,7 +250,7 @@ export default function LearningRoadmap() {
                         let linkPath = "";
                         if (resource.type === "summary") linkPath = `/documents/${selectedDocumentId}?tab=summary&topic=${topic}&count=${count}&difficulty=${difficulty}`;
                         if (resource.type === "quiz") linkPath = `/documents/${selectedDocumentId}?tab=quiz&topic=${topic}&count=${count}&difficulty=${difficulty}`;
-                        if (resource.type === "flashcard") linkPath = `/documents/${selectedDocumentId}?tab=flashcards&topic=${topic}&count=${count}&difficulty=${difficulty}`;
+                        if (resource.type === "flashcard") linkPath = `/documents/${selectedDocumentId}?tab=flashcards&topic=${topic}&count=${count}&difficulty=${difficulty}&autoFlashcards=1`;
                         if (resource.type === "chat") linkPath = `/documents/${selectedDocumentId}?tab=chat&topic=${topic}&count=${count}&difficulty=${difficulty}`;
 
                         return (

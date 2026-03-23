@@ -32,6 +32,39 @@ const selectCitations = (question, chunks) => chunks
         sectionTitle: entry.chunk.sectionTitle || 'Untitled Section'
     }));
 
+const extractKeywords = (text = '') => {
+    const tokens = (text.toLowerCase().match(/[a-z]{4,}/g) || []);
+    const stop = new Set(['this', 'that', 'with', 'from', 'into', 'there', 'their', 'about', 'which', 'using', 'used', 'also', 'have', 'been', 'were', 'they', 'them']);
+    const frequency = new Map();
+    tokens.forEach((token) => {
+        if (!stop.has(token)) {
+            frequency.set(token, (frequency.get(token) || 0) + 1);
+        }
+    });
+    return [...frequency.entries()].sort((a, b) => b[1] - a[1]).slice(0, 20).map(([token]) => token);
+};
+
+const buildFallbackFlashcards = (chunks, requestedCount) => {
+    if (!chunks.length) {
+        return [];
+    }
+
+    const allKeywords = extractKeywords(chunks.map((chunk) => chunk.content).join(' '));
+    const cards = [];
+    for (let index = 0; index < requestedCount; index += 1) {
+        const chunk = chunks[index % chunks.length];
+        const keyword = allKeywords[index % Math.max(allKeywords.length, 1)] || 'core concept';
+        const content = (chunk.content || '').replace(/\s+/g, ' ').trim();
+        const answer = content.slice(0, 180) + (content.length > 180 ? '...' : '');
+
+        cards.push({
+            question: `What does the document explain about "${keyword}" in ${chunk.sectionTitle || 'this section'}?`,
+            answer
+        });
+    }
+    return cards;
+};
+
 export const generateFlashcards = asyncHandler(async (req, res) => {
     const body = req.body || {};
     const isCollection = req.params.id === 'collection';
@@ -89,9 +122,14 @@ ${sampledChunks.map((chunk, index) => `Excerpt ${index + 1}
 Document: ${chunk.documentTitle}
 Section: ${chunk.sectionTitle || 'Untitled Section'}
 ${chunk.content}`).join('\n\n')}`;
-    const flashcardsData = await generateJson(prompt, {
-      maxTokens: Math.min(7000, 500 + requestedCount * 220)
-    });
+    let flashcardsData = [];
+    try {
+      flashcardsData = await generateJson(prompt, {
+        maxTokens: Math.min(7000, 500 + requestedCount * 220)
+      });
+    } catch (error) {
+      flashcardsData = buildFallbackFlashcards(sampledChunks, requestedCount);
+    }
 
     const existingQuestionSet = new Set(existingFlashcards.map((card) => card.question.trim().toLowerCase()));
     const newItems = (Array.isArray(flashcardsData) ? flashcardsData : [])

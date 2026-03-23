@@ -94,11 +94,81 @@ const estimateQuizMaxTokens = (count, difficulty) => {
     return Math.min(9000, Math.max(1500, 600 + count * perQuestion));
 };
 
+const shuffleArray = (items) => {
+    const arr = [...items];
+    for (let i = arr.length - 1; i > 0; i -= 1) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [arr[i], arr[j]] = [arr[j], arr[i]];
+    }
+    return arr;
+};
+
+const fallbackQuizFromConcepts = (concepts, count) => {
+    if (!concepts.length) {
+        return [];
+    }
+
+    const questions = [];
+    for (let index = 0; index < count; index += 1) {
+        const concept = concepts[index % concepts.length];
+        const distractors = concepts
+            .filter((item) => item._id.toString() !== concept._id.toString())
+            .slice(0, 3)
+            .map((item) => `${item.name}: ${item.description}`);
+        const correct = `${concept.name}: ${concept.description}`;
+        const options = shuffleArray([correct, ...distractors]).slice(0, 4);
+
+        questions.push({
+            question: `Which option best describes the concept "${concept.name}" from the uploaded material?`,
+            options,
+            correctAnswer: options.includes(correct) ? correct : options[0],
+            explanation: concept.description,
+            conceptNames: [concept.name]
+        });
+    }
+    return questions;
+};
+
+const fallbackQuizFromChunks = (chunks, count) => {
+    if (!chunks.length) {
+        return [];
+    }
+    const cleaned = chunks.map((chunk) => ({
+        sectionTitle: chunk.sectionTitle || 'this section',
+        snippet: (chunk.content || '').replace(/\s+/g, ' ').trim().slice(0, 180)
+    })).filter((entry) => entry.snippet.length > 30);
+
+    if (!cleaned.length) {
+        return [];
+    }
+
+    const questions = [];
+    for (let index = 0; index < count; index += 1) {
+        const target = cleaned[index % cleaned.length];
+        const distractorSnippets = cleaned
+            .filter((entry, idx) => idx !== (index % cleaned.length))
+            .slice(0, 3)
+            .map((entry) => entry.snippet);
+        const correct = target.snippet;
+        const options = shuffleArray([correct, ...distractorSnippets]).slice(0, 4);
+        questions.push({
+            question: `According to ${target.sectionTitle}, which statement is supported by the document?`,
+            options,
+            correctAnswer: options.includes(correct) ? correct : options[0],
+            explanation: `This statement comes directly from ${target.sectionTitle}.`,
+            conceptNames: []
+        });
+    }
+
+    return questions;
+};
+
 export const generateAdaptiveQuiz = async (documents, userId, options = {}) => {
     const count = Math.min(20, Math.max(5, Number(options.count) || 5));
     const difficulty = ['easy', 'medium', 'hard'].includes(options.difficulty) ? options.difficulty : 'medium';
     const documentIds = documents.map((document) => document._id);
     const concepts = await conceptRepository.listByDocuments(documentIds);
+    const chunks = await chunkRepository.listByDocumentsOrdered(documentIds);
 
     // Filter concepts to most important ones
     const prioritizedConcepts = [...concepts].sort((a, b) => (b.importance || 0.5) - (a.importance || 0.5));
@@ -109,13 +179,13 @@ export const generateAdaptiveQuiz = async (documents, userId, options = {}) => {
         maxTokens: estimateQuizMaxTokens(count, difficulty)
     };
 
-    if (targetConcepts.length > 0) {
-        questionsData = await generateJson(
-            buildQuizFromConceptsPrompt(documents, targetConcepts, count, difficulty),
-            generationConfig
-        );
-    } else {
-        const chunks = await chunkRepository.listByDocumentsOrdered(documentIds);
+    try {
+        if (targetConcepts.length > 0) {
+            questionsData = await generateJson(
+                buildQuizFromConceptsPrompt(documents, targetConcepts, count, difficulty),
+                generationConfig
+            );
+        } else {
         const excerptText = chunks
             .slice(0, Math.max(count * 4, 24))
             .map((chunk, index) => `Excerpt ${index + 1} (${chunk.sectionTitle || 'Section'}): ${chunk.content}`)
@@ -124,10 +194,15 @@ export const generateAdaptiveQuiz = async (documents, userId, options = {}) => {
         if (!excerptText.trim()) {
             throw new Error('Quiz cannot be generated because document content is still unavailable.');
         }
-        questionsData = await generateJson(
-            buildQuizFromChunksPrompt(documents, excerptText, count, difficulty),
-            generationConfig
-        );
+            questionsData = await generateJson(
+                buildQuizFromChunksPrompt(documents, excerptText, count, difficulty),
+                generationConfig
+            );
+        }
+    } catch (error) {
+        questionsData = targetConcepts.length
+            ? fallbackQuizFromConcepts(targetConcepts, count)
+            : fallbackQuizFromChunks(chunks, count);
     }
 
     let normalizedQuestions = normalizeQuestions(questionsData, count);
@@ -136,11 +211,19 @@ export const generateAdaptiveQuiz = async (documents, userId, options = {}) => {
 Return JSON array only.
 Avoid repeating any of these existing questions:
 ${normalizedQuestions.map((q) => `- ${q.question}`).join('\n')}`;
-        const retryQuestions = await generateJson(
-            `${buildQuizFromConceptsPrompt(documents, targetConcepts.length ? targetConcepts : concepts.slice(0, 20), count - normalizedQuestions.length, difficulty)}\n\n${retryPrompt}`,
-            generationConfig
-        );
-        normalizedQuestions = normalizeQuestions([...normalizedQuestions, ...(Array.isArray(retryQuestions) ? retryQuestions : [])], count);
+        try {
+            const retryQuestions = await generateJson(
+                `${buildQuizFromConceptsPrompt(documents, targetConcepts.length ? targetConcepts : concepts.slice(0, 20), count - normalizedQuestions.length, difficulty)}\n\n${retryPrompt}`,
+                generationConfig
+            );
+            normalizedQuestions = normalizeQuestions([...normalizedQuestions, ...(Array.isArray(retryQuestions) ? retryQuestions : [])], count);
+        } catch (error) {
+            const fallbackRemainder = (targetConcepts.length
+                ? fallbackQuizFromConcepts(targetConcepts, count)
+                : fallbackQuizFromChunks(chunks, count))
+                .slice(0, count - normalizedQuestions.length);
+            normalizedQuestions = normalizeQuestions([...normalizedQuestions, ...fallbackRemainder], count);
+        }
     }
 
     if (!normalizedQuestions.length) {

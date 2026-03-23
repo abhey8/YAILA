@@ -186,7 +186,10 @@ export default function DocumentDetail() {
   const isDocumentReady = document?.ingestionStatus === "completed";
   const isTopicFlow = Boolean(topicFocus.trim());
 
-  const updateTabQuery = (tab: "chat" | "summary" | "flashcards" | "quiz") => {
+  const updateTabQuery = (
+    tab: "chat" | "summary" | "flashcards" | "quiz",
+    extraParams: Record<string, string | null> = {}
+  ) => {
     const params = new URLSearchParams(searchParams);
     params.set("tab", tab);
     if (topicFocus.trim()) {
@@ -194,6 +197,13 @@ export default function DocumentDetail() {
     }
     params.set("count", quizCount);
     params.set("difficulty", quizDifficulty);
+    Object.entries(extraParams).forEach(([key, value]) => {
+      if (value === null) {
+        params.delete(key);
+      } else {
+        params.set(key, value);
+      }
+    });
     setSearchParams(params, { replace: true });
   };
 
@@ -274,6 +284,37 @@ export default function DocumentDetail() {
         setIsGeneratingFlashcards(false);
       });
   };
+
+  useEffect(() => {
+    if (!id || !isDocumentReady || activeTab !== "flashcards" || !isTopicFlow) {
+      return;
+    }
+    if (searchParams.get("autoFlashcards") !== "1") {
+      return;
+    }
+
+    const params = new URLSearchParams(searchParams);
+    params.delete("autoFlashcards");
+    setSearchParams(params, { replace: true });
+
+    setFlashcardCount("10");
+    setIsGeneratingFlashcards(true);
+    flashcardApi.generate(id, {
+      regenerate: true,
+      append: false,
+      count: 10,
+    })
+      .then((generated) => {
+        setFlashcards(generated || []);
+        toast.success("10 flashcards generated for this roadmap topic");
+      })
+      .catch(() => {
+        toast.error("Failed to auto-generate flashcards");
+      })
+      .finally(() => {
+        setIsGeneratingFlashcards(false);
+      });
+  }, [id, isDocumentReady, activeTab, isTopicFlow, searchParams, setSearchParams]);
 
   const handleToggleFavorite = async (flashcardId: string) => {
     try {
@@ -458,8 +499,9 @@ export default function DocumentDetail() {
                     </button>
                     <button
                       onClick={() => {
+                        setFlashcardCount("10");
                         setActiveTab("flashcards");
-                        updateTabQuery("flashcards");
+                        updateTabQuery("flashcards", { autoFlashcards: "1", count: "10" });
                       }}
                       className="px-4 py-2 rounded-lg study-button-secondary"
                     >
