@@ -5,10 +5,15 @@ import { documentRepository } from '../repositories/documentRepository.js';
 import { generateAdaptiveQuiz, submitAdaptiveQuizAttempt } from '../services/quizService.js';
 
 export const generateQuiz = asyncHandler(async (req, res) => {
-    const { count = 5 } = req.body;
+    const body = req.body || {};
+    const queryCount = Number(req.query.count);
+    const bodyCount = Number(body.count);
+    const count = Number.isFinite(queryCount) && queryCount > 0
+        ? queryCount
+        : (Number.isFinite(bodyCount) && bodyCount > 0 ? bodyCount : 5);
     const isCollection = req.params.id === 'collection';
     const documents = isCollection
-        ? await documentRepository.listOwnedDocumentsByIds(req.user._id, req.body.documentIds || [])
+        ? await documentRepository.listOwnedDocumentsByIds(req.user._id, body.documentIds || [])
         : [await documentRepository.findOwnedDocument(req.params.id, req.user._id)].filter(Boolean);
     if (!documents.length) {
         throw new AppError(isCollection ? 'No documents found for quiz generation' : 'Document not found', 404, 'DOCUMENT_NOT_FOUND');

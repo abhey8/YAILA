@@ -18,10 +18,17 @@ const lexicalScore = (query, content) => {
 const hasUsableEmbedding = (embedding = []) => embedding.some((value) => Math.abs(value) > 1e-9);
 
 const rerank = (query, chunks) => chunks
-    .map((chunk) => ({
-        ...chunk,
-        rerankScore: (chunk.semanticScore * 0.65) + (lexicalScore(query, chunk.content) * 0.35)
-    }))
+    .map((chunk) => {
+        const lexical = lexicalScore(query, chunk.content);
+        const semantic = chunk.semanticScore || 0;
+        // If semantic is clearly a failure/placeholder (0.01), rely more on lexical
+        const isPlaceholder = Math.abs(semantic - 1.0) < 1e-4 && lexical > 0.1;
+        
+        return {
+            ...chunk,
+            rerankScore: isPlaceholder ? (lexical * 0.8) : (semantic * 0.6 + lexical * 0.4)
+        };
+    })
     .sort((left, right) => right.rerankScore - left.rerankScore);
 
 export const resolveQueryableDocuments = async ({ userId, documentIds = [] }) => {
@@ -55,12 +62,40 @@ export const retrieveRelevantChunks = async ({
     const documentTitleById = new Map(
         resolvedDocuments.map((document) => [document._id.toString(), document.title || document.originalName])
     );
-    const [queryEmbedding] = await embedTexts([query]);
+    let queryEmbedding = null;
+    try {
+        const embeddings = await embedTexts([query]);
+        queryEmbedding = embeddings[0];
+    } catch (error) {
+        queryEmbedding = null;
+    }
+
+    const fallbackLexicalSearch = async () => {
+        const chunks = resolvedIds.length === 1
+            ? await chunkRepository.listByDocument(resolvedIds[0])
+            : await chunkRepository.listByDocuments(resolvedIds);
+        const scored = chunks.map((chunk) => ({
+            ...chunk.toObject(),
+            semanticScore: (queryEmbedding?.length && hasUsableEmbedding(chunk.embedding))
+                ? cosineSimilarity(queryEmbedding, chunk.embedding)
+                : lexicalScore(query, chunk.content),
+            documentTitle: documentTitleById.get(chunk.document.toString()) || 'Uploaded Document'
+        }));
+
+        return rerank(query, scored).slice(0, topK);
+    };
 
     try {
+        if (!queryEmbedding?.length) {
+            throw new Error('Query embedding unavailable');
+        }
         const scoredChunks = resolvedIds.length === 1
             ? await chunkRepository.vectorSearch(resolvedIds[0], queryEmbedding, topK * 3)
             : await chunkRepository.vectorSearchByDocuments(resolvedIds, userId, queryEmbedding, topK * 3);
+
+        if (!scoredChunks.length) {
+            return fallbackLexicalSearch();
+        }
 
         return rerank(query, scoredChunks)
             .slice(0, topK)
@@ -69,17 +104,6 @@ export const retrieveRelevantChunks = async ({
                 documentTitle: documentTitleById.get(chunk.document.toString()) || 'Uploaded Document'
             }));
     } catch (err) {
-        const chunks = resolvedIds.length === 1
-            ? await chunkRepository.listByDocument(resolvedIds[0])
-            : await chunkRepository.listByDocuments(resolvedIds);
-        const scored = chunks.map((chunk) => ({
-            ...chunk.toObject(),
-            semanticScore: hasUsableEmbedding(chunk.embedding)
-                ? cosineSimilarity(queryEmbedding, chunk.embedding)
-                : lexicalScore(query, chunk.content),
-            documentTitle: documentTitleById.get(chunk.document.toString()) || 'Uploaded Document'
-        }));
-
-        return rerank(query, scored).slice(0, topK);
+        return fallbackLexicalSearch();
     }
 };

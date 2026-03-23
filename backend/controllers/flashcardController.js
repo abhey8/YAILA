@@ -33,9 +33,10 @@ const selectCitations = (question, chunks) => chunks
     }));
 
 export const generateFlashcards = asyncHandler(async (req, res) => {
+    const body = req.body || {};
     const isCollection = req.params.id === 'collection';
     const requestedDocuments = isCollection
-        ? await documentRepository.listOwnedDocumentsByIds(req.user._id, req.body.documentIds || [])
+        ? await documentRepository.listOwnedDocumentsByIds(req.user._id, body.documentIds || [])
         : [await documentRepository.findOwnedDocument(req.params.id, req.user._id)].filter(Boolean);
     if (!requestedDocuments.length) {
         throw new AppError(isCollection ? 'No documents found for flashcard generation' : 'Document not found', 404, 'DOCUMENT_NOT_FOUND');
@@ -48,7 +49,7 @@ export const generateFlashcards = asyncHandler(async (req, res) => {
     const sourceDocumentIds = sourceDocuments.map((document) => document._id);
     const anchorDocument = sourceDocuments[0];
 
-    const shouldRegenerate = req.query.regenerate === 'true' || req.body?.regenerate === true;
+    const shouldRegenerate = req.query.regenerate === 'true' || body.regenerate === true;
     const existingFlashcards = await Flashcard.find({ document: anchorDocument._id, user: req.user._id });
     if (existingFlashcards.length && !shouldRegenerate && !isCollection) {
         res.json(existingFlashcards);
@@ -66,7 +67,11 @@ export const generateFlashcards = asyncHandler(async (req, res) => {
             || 'Uploaded Document'
     }));
     const sampledChunks = sampleChunksForPrompt(chunks, 18);
-    const prompt = `Create 10 strong study flashcards from these uploaded materials.
+    const requestedCount = Math.min(
+        20,
+        Math.max(5, Number(req.query.count) || Number(body.count) || 10)
+    );
+    const prompt = `Create ${requestedCount} strong study flashcards from these uploaded materials.
 Documents:
 ${sourceDocuments.map((document) => `- ${document.title || document.originalName}`).join('\n')}
 

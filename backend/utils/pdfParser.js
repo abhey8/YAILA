@@ -5,7 +5,7 @@ const pdfParse = require('pdf-parse');
 
 export const extractTextFromPDF = async (filePath) => {
     try {
-        const dataBuffer = fs.readFileSync(filePath);
+        const dataBuffer = await fs.promises.readFile(filePath);
         const data = await pdfParse(dataBuffer);
         return {
             text: data.text || '',

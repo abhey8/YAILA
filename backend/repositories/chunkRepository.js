@@ -21,6 +21,7 @@ export const chunkRepository = {
     listByDocumentsOrdered: (documentIds) => DocumentChunk.find({ document: { $in: documentIds } }).sort({ document: 1, chunkIndex: 1 }),
     listByIds: (chunkIds) => DocumentChunk.find({ _id: { $in: chunkIds } }),
     listByUser: (userId) => DocumentChunk.find({ user: userId }),
+    findByHashes: (hashes) => DocumentChunk.find({ contentHash: { $in: hashes } }),
     vectorSearch: async (documentId, queryEmbedding, topK) => {
         return await DocumentChunk.aggregate([
             {

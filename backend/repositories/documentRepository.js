@@ -4,6 +4,7 @@ import DocumentChunk from '../models/DocumentChunk.js';
 const documentSummaryProjection = '-textContent';
 
 export const documentRepository = {
+    findById: (documentId) => Document.findById(documentId),
     findOwnedDocument: (documentId, userId) => Document.findOne({ _id: documentId, user: userId }),
     findOwnedDocumentSummary: (documentId, userId) =>
         Document.findOne({ _id: documentId, user: userId }).select(documentSummaryProjection),

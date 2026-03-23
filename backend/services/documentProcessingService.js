@@ -2,6 +2,7 @@ import Document from '../models/Document.js';
 import { logger } from '../lib/logger.js';
 import { ingestDocument } from './documentIngestionService.js';
 import { generateRoadmap } from './roadmapService.js';
+import { documentQueueService } from './documentQueueService.js';
 
 const activeIngestions = new Set();
 
@@ -50,10 +51,10 @@ export const scheduleDocumentIngestion = (documentId, source = 'upload') => {
 
 export const resumeIncompleteIngestion = async () => {
     const documents = await Document.find({
-        ingestionStatus: { $in: ['pending', 'processing'] }
+        ingestionStatus: { $in: ['queued', 'pending', 'extracting', 'processing', 'embedding_partial'] }
     }).select('_id');
 
     documents.forEach((document) => {
-        scheduleDocumentIngestion(document._id, 'resume');
+        documentQueueService.enqueueDocument(document._id);
     });
 };

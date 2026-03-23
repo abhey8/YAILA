@@ -21,14 +21,19 @@ export const summarizeDocument = asyncHandler(async (req, res) => {
     }
 
     const chunks = await chunkRepository.listByDocument(document._id);
-    const sampledChunks = sampleChunksForPrompt(chunks, 14);
-    const summarySource = sampledChunks.length
-        ? formatChunksForPrompt(sampledChunks)
-        : (document.textContent || '').slice(0, 22000);
-    const summary = await generateText(`You are creating a study summary for a student.
+    
+    // [OPTIMISATION] Hierarchical Summary
+    // We combine the pre-generated chunk summaries from offline processing
+    // instead of loading raw chunks, saving massive amount of tokens and hitting Pro dynamically.
+    const chunkSummaries = chunks.map(c => `- ${c.sectionTitle || 'Section'}: ${c.summary}`).join('\n');
+    const summarySource = chunkSummaries || (document.textContent || '').slice(0, 15000);
+
+    const summary = await generateText(`You are an expert tutor creating a comprehensive study guide summary for a student.
 Document title: ${document.title}
 
-Use only the document content below. Write a structured, meaningful summary with these exact sections:
+Below are the pre-computed section summaries of the document. Read through the hierarchical flow and produce a final, high-quality overall summary.
+
+Write a structured, meaningful summary with these exact sections:
 1. Overview
 2. Main Topics
 3. Key Ideas and Definitions
@@ -37,11 +42,10 @@ Use only the document content below. Write a structured, meaningful summary with
 
 Requirements:
 - Use concise headings and bullet points.
-- Be specific to the uploaded document.
+- Be specific to the provided section summaries.
 - Mention important terms from the document, not generic filler.
-- If the document is lecture notes, summarize the lecture flow and teaching points.
 
-Document content:
+Section Summaries:
 ${summarySource}`);
     document.summary = summary;
     await document.save();

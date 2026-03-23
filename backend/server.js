@@ -23,6 +23,16 @@ import notificationRoutes from './routes/notificationRoutes.js';
 
 const app = express();
 
+process.on('unhandledRejection', (reason) => {
+    logger.error('Unhandled promise rejection', {
+        reason: reason instanceof Error ? reason.message : String(reason)
+    });
+});
+
+process.on('uncaughtException', (error) => {
+    logger.error('Uncaught exception', { error: error.message });
+});
+
 app.use(cors());
 app.use(express.json());
 app.use('/uploads', express.static(path.resolve(process.cwd(), 'uploads')));
@@ -74,9 +84,11 @@ const connectDB = async () => {
             logger.info('Server started', { port: env.port });
         });
         startRoadmapRegenerationJob();
-        resumeIncompleteIngestion().catch((error) => {
-            logger.error('Failed to resume pending document ingestion', { error: error.message });
-        });
+        if (env.resumeIngestionOnBoot) {
+            resumeIncompleteIngestion().catch((error) => {
+                logger.error('Failed to resume pending document ingestion', { error: error.message });
+            });
+        }
     } catch (error) {
         logger.error('Error connecting to MongoDB', { error: error.message });
     }

@@ -11,7 +11,7 @@ const documentSchema = new mongoose.Schema({
     summary: { type: String },
     ingestionStatus: {
         type: String,
-        enum: ['pending', 'processing', 'completed', 'failed'],
+        enum: ['queued', 'pending', 'extracting', 'processing', 'embedding_partial', 'completed', 'failed'],
         default: 'pending'
     },
     ingestionError: { type: String, default: null },

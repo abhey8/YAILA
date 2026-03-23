@@ -16,12 +16,13 @@ import { extractTextFromPDF } from '../utils/pdfParser.js';
 
 export const uploadDocument = asyncHandler(async (req, res) => {
     if (!req.file) {
-        throw new AppError('Please upload a PDF file', 400, 'MISSING_FILE');
+        throw new AppError('Please upload a supported file (PDF, JPG, PNG, WEBP)', 400, 'MISSING_FILE');
     }
 
     try {
-        const { text, pageCount } = await extractTextFromPDF(req.file.path);
+        const { documentQueueService } = await import('../services/documentQueueService.js');
 
+        // Note: text extraction moved to background queue to prevent request timeouts for 50MB files.
         const document = await documentRepository.create({
             user: req.user._id,
             title: req.body.title || req.file.originalname,
@@ -29,12 +30,13 @@ export const uploadDocument = asyncHandler(async (req, res) => {
             originalName: req.file.originalname,
             path: req.file.path,
             size: req.file.size,
-            textContent: text,
+            textContent: '',
             metadata: {
-                pageCount,
+                pageCount: 0,
                 language: 'en',
-                sourceType: 'pdf'
+                sourceType: req.file.mimetype.startsWith('image/') ? 'image' : 'pdf'
             },
+            ingestionStatus: 'queued',
             ingestionProgress: {
                 stage: 'queued',
                 progressPercent: 0,
@@ -53,12 +55,12 @@ export const uploadDocument = asyncHandler(async (req, res) => {
             title: 'Document uploaded',
             description: `${document.title || document.originalName} was uploaded successfully.`,
             metadata: {
-                pageCount,
                 size: req.file.size
             }
         });
 
-        scheduleDocumentIngestion(document._id, 'initial');
+        // Push to the new background processing queue
+        documentQueueService.enqueueDocument(document._id);
 
         const freshDocument = await documentRepository.findOwnedDocumentSummary(document._id, req.user._id);
         res.status(202).json({

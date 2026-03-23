@@ -1,130 +1,199 @@
-import { GoogleGenAI } from '@google/genai';
 import { env } from '../config/env.js';
 import { AppError } from '../lib/errors.js';
 import { stripCodeFences } from '../lib/text.js';
 
-const getClient = () => {
+const GEMINI_BASE_URL = 'https://generativelanguage.googleapis.com/v1beta';
+const DEFAULT_OPENROUTER_EMBED_MODEL = 'text-embedding-3-small';
+const GEMINI_EMBED_BATCH_SIZE = 20;
+const OPENROUTER_EMBED_BATCH_SIZE = 32;
+
+const delay = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
+
+const toAppError = (message, statusCode = 502, code = 'AI_API_FAILURE') =>
+    new AppError(message, statusCode, code);
+
+const getOpenRouterKey = () => env.openrouterApiKey || env.geminiApiKey;
+
+const resolveProvider = () => {
+    if (env.aiProvider === 'gemini') {
+        return 'gemini';
+    }
+    if (env.aiProvider === 'openrouter') {
+        return 'openrouter';
+    }
+
+    const openRouterKey = getOpenRouterKey();
+    if (openRouterKey && openRouterKey.startsWith('sk-or-v1')) {
+        return 'openrouter';
+    }
+
+    return 'gemini';
+};
+
+const callGemini = async (endpoint, payload, model) => {
     if (!env.geminiApiKey || env.geminiApiKey === 'your_gemini_api_key_here') {
-        throw new AppError('Missing GEMINI_API_KEY', 500, 'MISSING_GEMINI_API_KEY');
+        throw toAppError('Missing GEMINI_API_KEY', 500, 'MISSING_GEMINI_API_KEY');
     }
 
-    return new GoogleGenAI({ apiKey: env.geminiApiKey });
-};
-
-const extractText = (response) => response?.text || '';
-
-const fallbackChatModels = [
-    env.geminiChatModel,
-    'gemini-2.5-flash-lite',
-    'gemini-2.5-flash'
-].filter((model, index, models) => model && models.indexOf(model) === index);
-
-let requestQueue = Promise.resolve();
-let nextAvailableRequestAt = 0;
-let embeddingQueue = Promise.resolve();
-let nextAvailableEmbeddingAt = 0;
-
-const isRecoverableModelError = (error) => {
-    const message = error?.message || '';
-    return message.includes('"code":429')
-        || message.includes('"code":404')
-        || message.includes('RESOURCE_EXHAUSTED')
-        || message.includes('UNAVAILABLE')
-        || message.includes('rate limit');
-};
-
-const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
-
-const extractRetryDelayMs = (error) => {
-    const message = error?.message || '';
-    const match = message.match(/retry in\s+([0-9.]+)s/i);
-    if (!match) {
-        return 15000;
-    }
-
-    return Math.ceil(Number(match[1]) * 1000);
-};
-
-const runThrottled = async (operation, options = {}) => {
-    const queueType = options.queueType || 'generation';
-    const spacingMs = options.spacingMs ?? (queueType === 'embedding' ? 150 : 1500);
-    const activeQueue = queueType === 'embedding' ? embeddingQueue : requestQueue;
-
-    const scheduled = activeQueue.then(async () => {
-        const nextAvailableAt = queueType === 'embedding' ? nextAvailableEmbeddingAt : nextAvailableRequestAt;
-        const waitTime = Math.max(0, nextAvailableAt - Date.now());
-        if (waitTime > 0) {
-            await sleep(waitTime);
-        }
-
-        try {
-            return await operation();
-        } finally {
-            if (queueType === 'embedding') {
-                nextAvailableEmbeddingAt = Date.now() + spacingMs;
-            } else {
-                nextAvailableRequestAt = Date.now() + spacingMs;
-            }
-        }
+    const url = `${GEMINI_BASE_URL}/models/${model}:${endpoint}?key=${env.geminiApiKey}`;
+    const response = await fetch(url, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload)
     });
 
-    if (queueType === 'embedding') {
-        embeddingQueue = scheduled.catch(() => undefined);
-    } else {
-        requestQueue = scheduled.catch(() => undefined);
+    const data = await response.json().catch(() => ({}));
+    if (!response.ok) {
+        throw toAppError(data.error?.message || 'Gemini API failure', response.status, 'AI_API_FAILURE');
     }
 
-    return scheduled;
+    return data;
 };
 
-export const generateText = async (prompt, config = {}) => {
-    const ai = getClient();
+const callOpenRouter = async (endpoint, payload) => {
+    const apiKey = getOpenRouterKey();
+    if (!apiKey) {
+        throw toAppError('Missing OPENROUTER_API_KEY', 500, 'MISSING_OPENROUTER_API_KEY');
+    }
+
+    const headers = {
+        Authorization: `Bearer ${apiKey}`,
+        'Content-Type': 'application/json'
+    };
+
+    if (env.openrouterSiteUrl) {
+        headers['HTTP-Referer'] = env.openrouterSiteUrl;
+    }
+    if (env.openrouterAppName) {
+        headers['X-Title'] = env.openrouterAppName;
+    }
+
+    const response = await fetch(`${env.openrouterBaseUrl}${endpoint}`, {
+        method: 'POST',
+        headers,
+        body: JSON.stringify(payload)
+    });
+
+    const data = await response.json().catch(() => ({}));
+    if (!response.ok) {
+        const errorMessage = data.error?.message || data.message || 'OpenRouter API failure';
+        throw toAppError(errorMessage, response.status, 'AI_API_FAILURE');
+    }
+
+    return data;
+};
+
+const fallbackGeminiModels = [
+    env.geminiChatModel,
+    'gemini-2.5-flash',
+    'gemini-2.0-flash'
+].filter((model, index, models) => model && models.indexOf(model) === index);
+
+const fallbackOpenRouterModels = [
+    env.openrouterChatModel,
+    env.geminiChatModel,
+    'openai/gpt-4.1-mini',
+    'google/gemini-2.5-flash'
+].filter((model, index, models) => model && models.indexOf(model) === index);
+
+const extractOpenRouterText = (data) => {
+    const content = data.choices?.[0]?.message?.content;
+    if (typeof content === 'string') {
+        return content;
+    }
+    if (Array.isArray(content)) {
+        return content
+            .map((part) => (typeof part === 'string' ? part : part?.text || ''))
+            .join('')
+            .trim();
+    }
+    return '';
+};
+
+const generateTextGemini = async (prompt, config = {}) => {
     const requestedModels = Array.isArray(config.model)
         ? config.model
         : [config.model || env.geminiChatModel];
-    const models = [...requestedModels, ...fallbackChatModels]
+    const models = [...requestedModels, ...fallbackGeminiModels]
         .filter((model, index, list) => model && list.indexOf(model) === index);
 
     let lastError = null;
-
     for (const model of models) {
         try {
-            const response = await runThrottled(() => ai.models.generateContent({
-                model,
-                contents: prompt,
-                config: config.generationConfig
-            }));
-
-            const text = extractText(response);
+            const payload = {
+                contents: [{ parts: [{ text: prompt }] }],
+                generationConfig: { ...(config.generationConfig || {}) }
+            };
+            const data = await callGemini('generateContent', payload, model);
+            const text = data.candidates?.[0]?.content?.parts?.[0]?.text;
             if (!text) {
-                throw new AppError('Empty response from AI model', 502, 'EMPTY_AI_RESPONSE');
+                throw toAppError('Empty response from Gemini', 502, 'EMPTY_AI_RESPONSE');
             }
-
             return text;
         } catch (error) {
             lastError = error;
-            if (error?.message?.includes('"code":429') || error?.message?.includes('RESOURCE_EXHAUSTED')) {
-                await sleep(extractRetryDelayMs(error));
+            if (error.statusCode === 429) {
+                await delay(1800);
             }
-            if (!isRecoverableModelError(error)) {
-                throw error;
+            if (error.statusCode === 400 || error.statusCode === 401 || error.statusCode === 404) {
+                continue;
             }
         }
     }
 
-    throw lastError || new AppError('No AI model produced a response', 502, 'AI_MODEL_FAILURE');
+    throw lastError || toAppError('No Gemini model produced a response', 502, 'AI_MODEL_FAILURE');
+};
+
+const generateTextOpenRouter = async (prompt, config = {}) => {
+    const requestedModels = Array.isArray(config.model)
+        ? config.model
+        : [config.model || env.openrouterChatModel || env.geminiChatModel];
+    const models = [...requestedModels, ...fallbackOpenRouterModels]
+        .filter((model, index, list) => model && list.indexOf(model) === index);
+
+    let lastError = null;
+    for (const model of models) {
+        try {
+            const generationConfig = config.generationConfig || {};
+            const maxTokens = config.maxTokens
+                || generationConfig.maxOutputTokens
+                || generationConfig.max_tokens
+                || env.aiMaxOutputTokens;
+            const payload = {
+                model,
+                messages: [{ role: 'user', content: prompt }],
+                max_tokens: maxTokens
+            };
+            const data = await callOpenRouter('/chat/completions', payload);
+            const text = extractOpenRouterText(data);
+            if (!text) {
+                throw toAppError('Empty response from OpenRouter', 502, 'EMPTY_AI_RESPONSE');
+            }
+            return text;
+        } catch (error) {
+            lastError = error;
+            if (error.statusCode === 429) {
+                await delay(1800);
+            }
+            if (error.statusCode === 400 || error.statusCode === 401 || error.statusCode === 404) {
+                continue;
+            }
+        }
+    }
+
+    throw lastError || toAppError('No OpenRouter model produced a response', 502, 'AI_MODEL_FAILURE');
+};
+
+export const generateText = async (prompt, config = {}) => {
+    return resolveProvider() === 'openrouter'
+        ? generateTextOpenRouter(prompt, config)
+        : generateTextGemini(prompt, config);
 };
 
 export const generateJson = async (prompt, config = {}) => {
     const text = await generateText(
         `${prompt}\n\nReturn valid JSON only. Do not wrap in markdown or backticks.`,
-        {
-            ...config,
-            generationConfig: {
-                responseMimeType: 'application/json',
-                ...(config.generationConfig || {})
-            }
-        }
+        config
     );
 
     try {
@@ -134,29 +203,92 @@ export const generateJson = async (prompt, config = {}) => {
     }
 };
 
-export const embedTexts = async (texts) => {
-    try {
-        const ai = getClient();
-        const allEmbeddings = [];
+const embedTextsGemini = async (texts) => {
+    const model = env.geminiEmbeddingModel || 'gemini-embedding-001';
+    const results = [];
 
-        for (const text of texts) {
-            const response = await runThrottled(() => ai.models.embedContent({
-                model: env.geminiEmbeddingModel,
-                contents: text,
-                config: { outputDimensionality: env.embeddingDimensions }
-            }), { queueType: 'embedding', spacingMs: 150 });
-            const values = response.embeddings?.[0]?.values || response.embedding?.values || [];
-            if (!values.length) {
-                throw new AppError('Embedding generation returned no values', 502, 'EMBEDDING_FAILURE');
+    for (let start = 0; start < texts.length; start += GEMINI_EMBED_BATCH_SIZE) {
+        const batch = texts.slice(start, start + GEMINI_EMBED_BATCH_SIZE);
+        let attempts = 0;
+        while (attempts < 4) {
+            try {
+                const payload = {
+                    requests: batch.map((text) => ({
+                        model: `models/${model}`,
+                        content: { parts: [{ text }] }
+                    }))
+                };
+                const data = await callGemini('batchEmbedContents', payload, model);
+                const batchVectors = (data.embeddings || []).map((item) => item.values || []);
+                if (batchVectors.length !== batch.length) {
+                    throw toAppError('Embedding batch size mismatch', 502, 'EMBEDDING_FAILURE');
+                }
+                results.push(...batchVectors);
+                break;
+            } catch (error) {
+                attempts += 1;
+                if (attempts >= 4 || ![429, 500, 503].includes(error.statusCode)) {
+                    throw toAppError(`AI Embedding failed: ${error.message}`, 502, 'EMBEDDING_FAILURE');
+                }
+                await delay(1500 * attempts);
             }
-
-            allEmbeddings.push(values);
         }
-
-        return allEmbeddings;
-    } catch (e) {
-        console.error("Batch Embedding failed:", e.message);
-        // Fallback array for db
-        return texts.map(() => Array(env.embeddingDimensions).fill(0.01));
     }
+
+    return results;
+};
+
+const resolveOpenRouterEmbeddingModel = () => {
+    if (env.openrouterEmbeddingModel) {
+        return env.openrouterEmbeddingModel;
+    }
+    if (env.geminiEmbeddingModel && !env.geminiEmbeddingModel.startsWith('gemini-')) {
+        return env.geminiEmbeddingModel;
+    }
+    return DEFAULT_OPENROUTER_EMBED_MODEL;
+};
+
+const embedTextsOpenRouter = async (texts) => {
+    const model = resolveOpenRouterEmbeddingModel();
+    const vectors = [];
+
+    for (let start = 0; start < texts.length; start += OPENROUTER_EMBED_BATCH_SIZE) {
+        const batch = texts.slice(start, start + OPENROUTER_EMBED_BATCH_SIZE);
+        let attempts = 0;
+        while (attempts < 4) {
+            try {
+                const data = await callOpenRouter('/embeddings', {
+                    model,
+                    input: batch
+                });
+                const ordered = (data.data || [])
+                    .sort((a, b) => a.index - b.index)
+                    .map((item) => item.embedding || []);
+                if (ordered.length !== batch.length) {
+                    throw toAppError('Embedding batch size mismatch', 502, 'EMBEDDING_FAILURE');
+                }
+                vectors.push(...ordered);
+                break;
+            } catch (error) {
+                attempts += 1;
+                if (attempts >= 4 || ![429, 500, 503].includes(error.statusCode)) {
+                    throw toAppError(`AI Embedding failed: ${error.message}`, 502, 'EMBEDDING_FAILURE');
+                }
+                await delay(1500 * attempts);
+            }
+        }
+    }
+
+    return vectors;
+};
+
+export const embedTexts = async (texts = []) => {
+    if (!Array.isArray(texts) || texts.length === 0) {
+        return [];
+    }
+
+    const normalized = texts.map((text) => (typeof text === 'string' ? text : String(text || '')));
+    return resolveProvider() === 'openrouter'
+        ? embedTextsOpenRouter(normalized)
+        : embedTextsGemini(normalized);
 };

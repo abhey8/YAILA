@@ -8,136 +8,83 @@ import { updateConceptMastery } from './masteryService.js';
 import { createNotification } from './notificationService.js';
 import { trackActivity } from './activityService.js';
 
-const buildQuizPrompt = (documents, concepts, chunks, count) => `Generate a ${count}-question multiple choice quiz from the uploaded study materials.
+const buildQuizFromConceptsPrompt = (documents, concepts, count) => `Generate a ${count}-question multiple choice quiz from the core extracted study concepts.
 Documents:
 ${documents.map((document) => `- ${document.title || document.originalName}`).join('\n')}
 
-Available concepts:
-${concepts.length ? concepts.map((concept) => `- ${concept.name}: ${concept.description}`).join('\n') : '- Use only the source excerpts below.'}
-
-Source excerpts:
-${chunks.map((chunk, index) => `Excerpt ${index + 1}
-Document: ${chunk.documentTitle}
-Section: ${chunk.sectionTitle || 'Untitled Section'}
-${chunk.content}`).join('\n\n')}
+Core Concepts to Test:
+${concepts.map((concept) => `- ${concept.name}: ${concept.description}`).join('\n')}
 
 Return a JSON array where each item has:
-- question
+- question (testing the concept)
 - options (4 strings)
 - correctAnswer
 - explanation
 - conceptNames (1-3 concept names from the list)
 
 Rules:
-- Every question must be answerable from the source excerpts only.
-- Focus on technical, academic, or core concepts. 
-- Ignore introductory filler, prefaces, or mentions of "how to use this book".
-- Use multiple documents when relevant.
+- Questions MUST be derived strictly from the provided Concepts list.
 - Do not use outside knowledge.
-- Keep explanations specific to the provided excerpts.`;
+- Focus exclusively on technical, academic, or core concept definitions and formulas.`;
 
-const lexicalScore = (needle, haystack) => {
-    const tokens = (needle.toLowerCase().match(/[a-z0-9]{3,}/g) || []);
-    if (!tokens.length) {
-        return 0;
-    }
+const buildQuizFromChunksPrompt = (documents, chunkText, count) => `Generate a ${count}-question multiple choice quiz grounded strictly in the provided document excerpts.
+Documents:
+${documents.map((document) => `- ${document.title || document.originalName}`).join('\n')}
 
-    const lowered = haystack.toLowerCase();
-    const matches = tokens.filter((token) => lowered.includes(token)).length;
-    return matches / tokens.length;
-};
+Document Excerpts:
+${chunkText}
 
-const toCitation = (chunk) => ({
-    document: chunk.document,
-    chunk: chunk._id,
-    documentTitle: chunk.documentTitle,
-    sectionTitle: chunk.sectionTitle || 'Untitled Section'
-});
+Return a JSON array where each item has:
+- question
+- options (4 strings)
+- correctAnswer
+- explanation
+- conceptNames (array, can be empty)
 
-const selectQuestionCitations = (question, chunks) => chunks
-    .map((chunk) => ({
-        chunk,
-        score: lexicalScore(question, `${chunk.content} ${chunk.summary || ''}`)
-    }))
-    .sort((left, right) => right.score - left.score)
-    .slice(0, 2)
-    .map((entry) => toCitation(entry.chunk));
+Rules:
+- Questions must be answerable from the excerpts.
+- Do not use outside knowledge.
+- Keep questions specific and non-repetitive.`;
 
 export const generateAdaptiveQuiz = async (documents, userId, count = 5) => {
     const documentIds = documents.map((document) => document._id);
-    const [concepts, chunks] = await Promise.all([
-        conceptRepository.listByDocuments(documentIds),
-        chunkRepository.listByDocumentsOrdered(documentIds)
-    ]);
-    // Better chunk selection: Skip likely prefatory material and sample across the whole document
-    // Or prioritize chunks that are linked to concepts.
-    
-    // Sort all concepts by importance/priority
+    const concepts = await conceptRepository.listByDocuments(documentIds);
+
+    // Filter concepts to most important ones
     const prioritizedConcepts = [...concepts].sort((a, b) => (b.importance || 0.5) - (a.importance || 0.5));
-    const conceptChunkIds = new Set();
-    prioritizedConcepts.slice(0, 20).forEach(c => {
-        (c.chunkRefs || []).forEach(ref => conceptChunkIds.add(ref.toString()));
-    });
+    const targetConcepts = prioritizedConcepts.slice(0, Math.max(count * 3, 15));
 
-    const candidateChunks = chunks.filter(c => {
-        const contentUpper = (c.content || '').toUpperCase();
-        const sectionUpper = (c.sectionTitle || '').toUpperCase();
-        // Skip common intro sections if they are long or at the very start
-        const isIntro = sectionUpper.includes('PREFACE') || 
-                        sectionUpper.includes('NOTE TO STUDENTS') || 
-                        sectionUpper.includes('DEDICATION') ||
-                        sectionUpper.includes('ACKNOWLEDGMENT');
-        
-        // If it's a very early chunk (first 1% or first 5 chunks) and contains preface markers, deprioritize
-        if (c.chunkIndex < Math.max(5, chunks.length * 0.01) && isIntro) return false;
-        return true;
-    });
+    let questionsData = [];
+    if (targetConcepts.length > 0) {
+        questionsData = await generateJson(buildQuizFromConceptsPrompt(documents, targetConcepts, count));
+    } else {
+        const chunks = await chunkRepository.listByDocumentsOrdered(documentIds);
+        const excerptText = chunks
+            .slice(0, Math.max(count * 4, 24))
+            .map((chunk, index) => `Excerpt ${index + 1} (${chunk.sectionTitle || 'Section'}): ${chunk.content}`)
+            .join('\n\n');
 
-    // Pick chunks: concepts first, then spread across the rest
-    const selectedChunks = [];
-    const usedIds = new Set();
-
-    // 1. Add chunks that contain important concepts
-    candidateChunks.forEach(c => {
-        if (conceptChunkIds.has(c._id.toString())) {
-            selectedChunks.push(c);
-            usedIds.add(c._id.toString());
+        if (!excerptText.trim()) {
+            throw new Error('Quiz cannot be generated because document content is still unavailable.');
         }
-    });
-
-    // 2. If we need more chunks, sample evenly from the remaining pool
-    if (selectedChunks.length < Math.max(count * 4, 18)) {
-        const remaining = candidateChunks.filter(c => !usedIds.has(c._id.toString()));
-        const targetExtra = Math.max(count * 4, 18) - selectedChunks.length;
-        const step = Math.max(1, Math.floor(remaining.length / targetExtra));
-        
-        for (let i = 0; i < remaining.length && selectedChunks.length < 24; i += step) {
-            selectedChunks.push(remaining[i]);
-            usedIds.add(remaining[i]._id.toString());
-        }
+        questionsData = await generateJson(buildQuizFromChunksPrompt(documents, excerptText, count));
     }
 
-    const chunkPool = selectedChunks
-        .sort((a, b) => a.chunkIndex - b.chunkIndex) // Keep them in logical reading order in the prompt
-        .slice(0, 24)
-        .map((chunk) => ({
-            ...chunk.toObject(),
-            documentTitle: documents.find((document) => document._id.toString() === chunk.document.toString())?.title
-                || documents.find((document) => document._id.toString() === chunk.document.toString())?.originalName
-                || 'Uploaded Document'
-        }));
-
-    const questionsData = await generateJson(buildQuizPrompt(documents, concepts, chunkPool, count));
-    const conceptByName = new Map(concepts.map((concept) => [concept.name.toLowerCase(), concept]));
-    const questionEmbeddings = await embedTexts(questionsData.map((item) => item.question));
+    const conceptByName = new Map(targetConcepts.map((concept) => [concept.name.toLowerCase(), concept]));
+    let questionEmbeddings = [];
+    try {
+        questionEmbeddings = await embedTexts(questionsData.map((item) => item.question));
+    } catch (error) {
+        questionEmbeddings = questionsData.map(() => []);
+    }
 
     return Quiz.create({
         document: documents[0]._id,
         user: userId,
         sourceDocuments: documentIds,
         title: documents.length === 1
-            ? `${documents[0].title} - Adaptive Quiz`
-            : 'Multi-Document Adaptive Quiz',
+            ? `${documents[0].title} - Adaptive Concept Quiz`
+            : 'Multi-Document Adaptive Concept Quiz',
         questions: questionsData.map((item, index) => ({
             question: item.question,
             options: item.options,
@@ -146,8 +93,8 @@ export const generateAdaptiveQuiz = async (documents, userId, count = 5) => {
             conceptTags: (item.conceptNames || [])
                 .map((name) => conceptByName.get(name.toLowerCase())?._id)
                 .filter(Boolean),
-            conceptEmbedding: questionEmbeddings[index],
-            citations: selectQuestionCitations(item.question, chunkPool)
+            conceptEmbedding: questionEmbeddings[index] || [],
+            citations: [] // Citations omitted as questions are directly mapped to pure conceptual ideas now
         }))
     });
 };

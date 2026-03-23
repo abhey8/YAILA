@@ -76,7 +76,30 @@ export const chatWithDocuments = async ({
         query: message
     });
 
-    if (!chunks.length || (chunks[0]?.rerankScore ?? 0) < 0.08) {
+    const hasProcessingDocs = documents.some(doc => ['queued', 'extracting', 'processing', 'embedding_partial'].includes(doc.ingestionStatus));
+    
+    // Check if documents are actually processed and have content
+    const totalChunkCount = documents.reduce((sum, doc) => sum + (doc.chunkCount || 0), 0);
+    if (totalChunkCount === 0 && !hasProcessingDocs) {
+        return {
+            reply: "I couldn't find any readable text in the uploaded document(s). This usually happens with scanned PDFs or images. Please try uploading a text-based PDF or providing more materials.",
+            retrievedChunks: [],
+            citations: [],
+            concepts: []
+        };
+    }
+
+    if (hasProcessingDocs && chunks.length < 2) {
+        return {
+            status: "DOCUMENT_STILL_PROCESSING",
+            reply: "The document is still being analyzed in the background. Please wait a moment while I finish extracting the relevant sections.",
+            retrievedChunks: [],
+            citations: [],
+            concepts: []
+        };
+    }
+
+    if (!chunks.length || (chunks[0]?.rerankScore ?? 0) < 0.03) {
         return {
             reply: NOT_FOUND_MESSAGE,
             retrievedChunks: [],
@@ -85,13 +108,53 @@ export const chatWithDocuments = async ({
         };
     }
 
+    const { buildOptimisedContext, pruneRetrievedChunks } = await import('./tokenOptimisationService.js');
+    const { routeAIRequest } = await import('./aiRouterService.js');
+    const { generateCacheKey, getCachedResponse, setCachedResponse } = await import('./aiCacheService.js');
+    const { aiQueueService } = await import('./aiQueueService.js');
+
     const concepts = await conceptRepository.listByDocuments(documentIds);
     const matchedConcepts = concepts
         .filter((concept) => chunks.some((chunk) => concept.chunkRefs.some((chunkId) => chunkId.toString() === chunk._id.toString())))
         .slice(0, 5);
 
-    const citations = uniqueCitations(chunks);
-    const reply = await generateText(buildPrompt({ documentTitles, message, chunks, history }));
+    // [OPTIMISATION] Context Saftey Guard 
+    const prunedChunks = pruneRetrievedChunks(chunks);
+    const citations = uniqueCitations(prunedChunks);
+
+    // [OPTIMISATION] Token compression
+    const compressedHistory = buildOptimisedContext(history);
+    const prompt = buildPrompt({ documentTitles, message, chunks: prunedChunks, history: history.slice(-6) }); // Still using strict array history for raw prompt
+    
+    // [OPTIMISATION] Response Caching
+    const cacheKey = generateCacheKey(message, compressedHistory);
+    let reply = await getCachedResponse(cacheKey);
+
+    if (!reply) {
+        // [OPTIMISATION] Model Routing 
+        const selectedModel = routeAIRequest(message, history);
+
+        try {
+            // [OPTIMISATION] Queue & Rate limiter
+            reply = await aiQueueService.enqueue(
+                () => generateText(prompt, { model: selectedModel }),
+                45000
+            );
+        } catch (error) {
+            if (error.statusCode === 429 || /quota|rate limit|timeout/i.test(error.message || '')) {
+                return {
+                    reply: 'AI service is temporarily rate-limited. Please retry in a short while.',
+                    retrievedChunks: [],
+                    citations: [],
+                    concepts: []
+                };
+            }
+            throw error;
+        }
+
+        // Store cache in background
+        setCachedResponse(cacheKey, reply).catch(e => console.error(e));
+    }
 
     let chatSession = documentIds.length === 1
         ? await ChatHistory.findOne({ document: documentIds[0], user: userId })

@@ -6,6 +6,7 @@ import { embedTexts } from './aiService.js';
 import { rebuildKnowledgeGraph } from './knowledgeGraphService.js';
 import { createNotification } from './notificationService.js';
 import { trackActivity } from './activityService.js';
+import { logger } from '../lib/logger.js';
 
 const EMBEDDING_BATCH_SIZE = 12;
 
@@ -66,11 +67,23 @@ export const ingestDocument = async (document) => {
         let processedChunks = 0;
         let embeddedChunks = 0;
         let insertedCount = 0;
+        let hadEmbeddingFailures = false;
 
         for (let start = 0; start < chunkDrafts.length; start += EMBEDDING_BATCH_SIZE) {
             const batch = chunkDrafts.slice(start, start + EMBEDDING_BATCH_SIZE);
             const missingEmbeddings = [];
             const embeddingKeys = [];
+
+            // Find existing embeddings from database first to avoid API quota
+            const hashesToFind = batch.map(c => hashContent(c.content)).filter(h => !embeddedCache.has(h));
+            if (hashesToFind.length > 0) {
+                const existingChunks = await chunkRepository.findByHashes(hashesToFind);
+                existingChunks.forEach(chunk => {
+                    if (chunk.embedding && chunk.embedding.length > 0) {
+                        embeddedCache.set(chunk.contentHash, chunk.embedding);
+                    }
+                });
+            }
 
             batch.forEach((chunk) => {
                 const contentHash = hashContent(chunk.content);
@@ -81,10 +94,19 @@ export const ingestDocument = async (document) => {
             });
 
             if (missingEmbeddings.length) {
-                const embeddings = await embedTexts(missingEmbeddings);
-                embeddings.forEach((embedding, index) => {
-                    embeddedCache.set(embeddingKeys[index], embedding || []);
-                });
+                try {
+                    const embeddings = await embedTexts(missingEmbeddings);
+                    embeddings.forEach((embedding, index) => {
+                        embeddedCache.set(embeddingKeys[index], embedding || []);
+                    });
+                } catch (embeddingError) {
+                    hadEmbeddingFailures = true;
+                    logger.warn('[Ingestion] Embedding batch failed, continuing with lexical fallback retrieval', {
+                        documentId: document._id.toString(),
+                        error: embeddingError.message
+                    });
+                    embeddingKeys.forEach((key) => embeddedCache.set(key, []));
+                }
             }
 
             const savedChunks = await chunkRepository.createMany(batch.map((chunk, index) => {
@@ -118,10 +140,7 @@ export const ingestDocument = async (document) => {
         }
 
         document.chunkCount = insertedCount;
-        await documentRepository.save(document);
-        await rebuildKnowledgeGraph(document);
-
-        document.ingestionStatus = 'completed';
+        document.ingestionStatus = hadEmbeddingFailures ? 'embedding_partial' : 'completed';
         document.ingestionProgress = {
             ...(document.ingestionProgress || {}),
             stage: 'completed',
@@ -131,6 +150,20 @@ export const ingestDocument = async (document) => {
             completedAt: new Date()
         };
         await documentRepository.save(document);
+
+        if (hadEmbeddingFailures) {
+            document.ingestionStatus = 'completed';
+            await documentRepository.save(document);
+        }
+
+        try {
+            await rebuildKnowledgeGraph(document);
+        } catch (graphError) {
+            logger.warn('[Ingestion] Knowledge graph generation skipped', {
+                documentId: document._id.toString(),
+                error: graphError.message
+            });
+        }
 
         await trackActivity({
             userId: document.user,

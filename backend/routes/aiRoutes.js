@@ -21,4 +21,21 @@ router.route('/chat/:id')
     .post(protect, chatDocument)
     .get(protect, getChatHistory);
 
+import { env } from '../config/env.js';
+import { embedTexts } from '../services/aiService.js';
+
+router.get('/test', async (req, res) => {
+    try {
+        const result = await embedTexts(["Test text 1", "Test text 2"]);
+        res.json({
+            success: true,
+            geminiApiKey: (env.geminiApiKey || '').slice(0, 10) + '...',
+            length: result.length,
+            sample: result[0]?.slice(0, 3) 
+        });
+    } catch (e) {
+        res.status(500).json({ success: false, error: e.message });
+    }
+});
+
 export default router;
