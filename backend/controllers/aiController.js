@@ -9,6 +9,39 @@ import { generateText } from '../services/aiService.js';
 import { chatWithDocuments } from '../services/chatService.js';
 import { predictConfusion } from '../services/confusionService.js';
 
+const extractKeywords = (text = '') => {
+    const words = (text.toLowerCase().match(/[a-z]{4,}/g) || [])
+        .filter((word) => !['this', 'that', 'with', 'from', 'were', 'have', 'been', 'into', 'your', 'about', 'there', 'their', 'which', 'these', 'those', 'using', 'used', 'also'].includes(word));
+    const freq = new Map();
+    words.forEach((w) => freq.set(w, (freq.get(w) || 0) + 1));
+    return [...freq.entries()].sort((a, b) => b[1] - a[1]).slice(0, 12).map(([word]) => word);
+};
+
+const fallbackStructuredSummary = (document, chunks = []) => {
+    const topChunks = chunks.slice(0, 14);
+    const sectionTitles = [...new Set(topChunks.map((c) => c.sectionTitle).filter(Boolean))].slice(0, 8);
+    const combined = topChunks.map((c) => c.content).join('\n');
+    const keywords = extractKeywords(combined);
+    const importantPoints = topChunks.slice(0, 6).map((chunk) => `- ${chunk.summary || chunk.content.slice(0, 160)}${(chunk.summary || chunk.content).length > 160 ? '...' : ''}`);
+
+    return [
+        '1. Overview',
+        `- ${document.title || document.originalName} covers foundational topics across ${Math.max(sectionTitles.length, 1)} major sections.`,
+        '',
+        '2. Main Topics',
+        ...(sectionTitles.length ? sectionTitles.map((title) => `- ${title}`) : ['- Core concepts extracted from the uploaded material']),
+        '',
+        '3. Key Ideas and Definitions',
+        ...(keywords.length ? keywords.slice(0, 8).map((kw) => `- ${kw}`) : ['- Key terms are still being identified from extracted content']),
+        '',
+        '4. Important Methods, Proofs, or Examples',
+        ...(importantPoints.length ? importantPoints : ['- No detailed methods were extracted in fallback mode']),
+        '',
+        '5. What to Revise First',
+        ...(sectionTitles.length ? sectionTitles.slice(0, 3).map((title) => `- Revise ${title}`) : ['- Start with the opening sections and core definitions'])
+    ].join('\n');
+};
+
 export const summarizeDocument = asyncHandler(async (req, res) => {
     const document = await documentRepository.findOwnedDocument(req.params.id, req.user._id);
     if (!document) {
@@ -28,7 +61,9 @@ export const summarizeDocument = asyncHandler(async (req, res) => {
     const chunkSummaries = chunks.map(c => `- ${c.sectionTitle || 'Section'}: ${c.summary}`).join('\n');
     const summarySource = chunkSummaries || (document.textContent || '').slice(0, 15000);
 
-    const summary = await generateText(`You are an expert tutor creating a comprehensive study guide summary for a student.
+    let summary = '';
+    try {
+        summary = await generateText(`You are an expert tutor creating a comprehensive study guide summary for a student.
 Document title: ${document.title}
 
 Below are the pre-computed section summaries of the document. Read through the hierarchical flow and produce a final, high-quality overall summary.
@@ -47,6 +82,9 @@ Requirements:
 
 Section Summaries:
 ${summarySource}`);
+    } catch (error) {
+        summary = fallbackStructuredSummary(document, chunks);
+    }
     document.summary = summary;
     await document.save();
 

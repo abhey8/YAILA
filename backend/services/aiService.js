@@ -8,6 +8,11 @@ const GEMINI_EMBED_BATCH_SIZE = 20;
 const OPENROUTER_EMBED_BATCH_SIZE = 32;
 
 const delay = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
+const withTimeoutSignal = (timeoutMs = 35000) => {
+    const controller = new AbortController();
+    const timer = setTimeout(() => controller.abort(), timeoutMs);
+    return { signal: controller.signal, clear: () => clearTimeout(timer) };
+};
 
 const toAppError = (message, statusCode = 502, code = 'AI_API_FAILURE') =>
     new AppError(message, statusCode, code);
@@ -36,11 +41,23 @@ const callGemini = async (endpoint, payload, model) => {
     }
 
     const url = `${GEMINI_BASE_URL}/models/${model}:${endpoint}?key=${env.geminiApiKey}`;
-    const response = await fetch(url, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(payload)
-    });
+    const { signal, clear } = withTimeoutSignal();
+    let response;
+    try {
+        response = await fetch(url, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(payload),
+            signal
+        });
+    } catch (error) {
+        clear();
+        if (error.name === 'AbortError') {
+            throw toAppError('AI request timed out', 504, 'AI_TIMEOUT');
+        }
+        throw error;
+    }
+    clear();
 
     const data = await response.json().catch(() => ({}));
     if (!response.ok) {
@@ -68,11 +85,23 @@ const callOpenRouter = async (endpoint, payload) => {
         headers['X-Title'] = env.openrouterAppName;
     }
 
-    const response = await fetch(`${env.openrouterBaseUrl}${endpoint}`, {
-        method: 'POST',
-        headers,
-        body: JSON.stringify(payload)
-    });
+    const { signal, clear } = withTimeoutSignal();
+    let response;
+    try {
+        response = await fetch(`${env.openrouterBaseUrl}${endpoint}`, {
+            method: 'POST',
+            headers,
+            body: JSON.stringify(payload),
+            signal
+        });
+    } catch (error) {
+        clear();
+        if (error.name === 'AbortError') {
+            throw toAppError('AI request timed out', 504, 'AI_TIMEOUT');
+        }
+        throw error;
+    }
+    clear();
 
     const data = await response.json().catch(() => ({}));
     if (!response.ok) {

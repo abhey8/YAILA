@@ -7,6 +7,22 @@ import { updateConceptMastery } from './masteryService.js';
 
 const NOT_FOUND_MESSAGE = 'Information not found in uploaded materials.';
 
+const buildFallbackReplyFromChunks = (question, chunks = []) => {
+    const topChunks = chunks.slice(0, 2);
+    if (!topChunks.length) {
+        return NOT_FOUND_MESSAGE;
+    }
+    const excerpts = topChunks
+        .map((chunk, index) => {
+            const content = (chunk.content || '').replace(/\s+/g, ' ').trim();
+            const snippet = content.slice(0, 320);
+            return `${index + 1}. ${snippet}${content.length > 320 ? '...' : ''}`;
+        })
+        .join('\n');
+
+    return `Provider fallback mode: I could not call the AI model right now, so here are the most relevant excerpts for your question "${question}":\n${excerpts}`;
+};
+
 const buildPrompt = ({ documentTitles, message, chunks, history }) => {
     const context = chunks.map((chunk, index) => (
         `Source ${index + 1}\nDocument: ${chunk.documentTitle}\nSection: ${chunk.sectionTitle || 'Untitled Section'}\nExcerpt:\n${chunk.content}`
@@ -141,9 +157,14 @@ export const chatWithDocuments = async ({
                 45000
             );
         } catch (error) {
-            if (error.statusCode === 429 || /quota|rate limit|timeout/i.test(error.message || '')) {
+            if (
+                error.statusCode === 402
+                || error.statusCode === 429
+                || error.statusCode === 504
+                || /quota|rate limit|timeout|credits|payment/i.test(error.message || '')
+            ) {
                 return {
-                    reply: 'AI service is temporarily rate-limited. Please retry in a short while.',
+                    reply: buildFallbackReplyFromChunks(message, prunedChunks),
                     retrievedChunks: [],
                     citations: [],
                     concepts: []
