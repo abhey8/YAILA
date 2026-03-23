@@ -7,11 +7,68 @@ import { updateConceptMastery } from './masteryService.js';
 
 const NOT_FOUND_MESSAGE = 'Information not found in uploaded materials.';
 
+const normalizeText = (value = '') => value.toLowerCase().replace(/\s+/g, ' ').trim();
+
+const isGreetingIntent = (message = '') => /^(hi|hello|hey|yo|hola|namaste|good (morning|afternoon|evening))\b/i.test(normalizeText(message));
+const isQuestionGenerationIntent = (message = '') => /(give|generate|create|make).*(question|questions|qs|quiz|mcq)|question.*from.*book|practice.*question|couple\s+qs/i.test(normalizeText(message));
+
+const parseRequestedQuestionCount = (message = '') => {
+    const text = normalizeText(message);
+    if (/\bcouple\b|\btwo\b/.test(text)) return 2;
+    const match = text.match(/\b(\d{1,2})\b/);
+    if (!match) return 3;
+    return Math.min(10, Math.max(2, Number(match[1])));
+};
+
+const extractChunkKeywords = (text = '') => {
+    const tokens = text.toLowerCase().match(/[a-z]{4,}/g) || [];
+    const stop = new Set(['this', 'that', 'with', 'from', 'into', 'there', 'their', 'about', 'which', 'where', 'while', 'would', 'could', 'should', 'have', 'been', 'also', 'they', 'them', 'were', 'what', 'when']);
+    const freq = new Map();
+    tokens.forEach((token) => {
+        if (!stop.has(token)) {
+            freq.set(token, (freq.get(token) || 0) + 1);
+        }
+    });
+    return [...freq.entries()].sort((a, b) => b[1] - a[1]).slice(0, 20).map(([token]) => token);
+};
+
+const buildFallbackQuestionsFromChunks = (message, chunks = []) => {
+    const top = chunks.slice(0, 4);
+    if (!top.length) {
+        return NOT_FOUND_MESSAGE;
+    }
+
+    const requested = parseRequestedQuestionCount(message);
+    const allKeywords = extractChunkKeywords(top.map((c) => c.content || '').join(' '));
+    const sectionPool = top.map((chunk) => chunk.sectionTitle || 'this section');
+    const questions = [];
+
+    for (let index = 0; index < requested; index += 1) {
+        const section = sectionPool[index % sectionPool.length];
+        const keyword = allKeywords[index % Math.max(allKeywords.length, 1)] || 'core concept';
+        questions.push(`${index + 1}. Explain "${keyword}" as presented in ${section}.`);
+    }
+
+    return `I could not reach the AI model right now, but based on your uploaded document, here are ${requested} focused practice questions:\n${questions.join('\n')}`;
+};
+
 const buildFallbackReplyFromChunks = (question, chunks = []) => {
     const topChunks = chunks.slice(0, 2);
     if (!topChunks.length) {
         return NOT_FOUND_MESSAGE;
     }
+
+    if (isGreetingIntent(question)) {
+        const title = topChunks[0].documentTitle || 'your document';
+        const section = topChunks[0].sectionTitle || 'the current section';
+        const keywords = extractChunkKeywords(topChunks.map((c) => c.content).join(' ')).slice(0, 4);
+        return `Ready to study ${title}. We can start with ${section}. Suggested focus topics: ${keywords.join(', ')}. Ask for summary, flashcards, or quiz questions.`;
+    }
+
+    if (isQuestionGenerationIntent(question)) {
+        return buildFallbackQuestionsFromChunks(question, topChunks);
+    }
+
     const excerpts = topChunks
         .map((chunk, index) => {
             const content = (chunk.content || '').replace(/\s+/g, ' ').trim();
@@ -20,7 +77,7 @@ const buildFallbackReplyFromChunks = (question, chunks = []) => {
         })
         .join('\n');
 
-    return `Provider fallback mode: I could not call the AI model right now, so here are the most relevant excerpts for your question "${question}":\n${excerpts}`;
+    return `I could not reach the AI model right now, so here are the most relevant excerpts from your uploaded materials for "${question}":\n${excerpts}`;
 };
 
 const buildPrompt = ({ documentTitles, message, chunks, history }) => {
@@ -42,7 +99,8 @@ Rules:
 - If the answer is not supported by the excerpts, reply with exactly: "${NOT_FOUND_MESSAGE}"
 - Do not answer from general knowledge.
 - Keep the answer concise and study-focused.
-- When the answer is found, end with a short "Sources:" line that references document title and section only from the provided excerpts.
+- Do NOT include a "Sources:" line in the response body.
+- Provide clean final answer text only.
 
 Conversation memory:
 ${memory || 'None'}
@@ -53,6 +111,12 @@ ${context}
 Student question:
 ${message}`;
 };
+
+const stripModelSourcesLine = (text = '') => text
+    .split('\n')
+    .filter((line) => !/^sources?\s*:/i.test(line.trim()))
+    .join('\n')
+    .trim();
 
 const toCitation = (chunk) => ({
     document: chunk.document,
@@ -156,6 +220,7 @@ export const chatWithDocuments = async ({
                 () => generateText(prompt, { model: selectedModel }),
                 45000
             );
+            reply = stripModelSourcesLine(reply);
         } catch (error) {
             if (
                 error.statusCode === 402
@@ -165,9 +230,17 @@ export const chatWithDocuments = async ({
             ) {
                 return {
                     reply: buildFallbackReplyFromChunks(message, prunedChunks),
-                    retrievedChunks: [],
-                    citations: [],
-                    concepts: []
+                    retrievedChunks: prunedChunks.map((chunk) => ({
+                        id: chunk._id,
+                        content: chunk.content,
+                        score: chunk.rerankScore,
+                        documentId: chunk.document,
+                        documentTitle: chunk.documentTitle,
+                        sectionTitle: chunk.sectionTitle || 'Untitled Section',
+                        chunkIndex: chunk.chunkIndex
+                    })),
+                    citations,
+                    concepts: matchedConcepts
                 };
             }
             throw error;
