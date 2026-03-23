@@ -1,4 +1,5 @@
 import { env } from '../config/env.js';
+import { logger } from '../lib/logger.js';
 
 /**
  * Service to optimise exact prompt payloads to adhere to token limitations,
@@ -50,7 +51,7 @@ export const pruneRetrievedChunks = (chunks) => {
     for (const chunk of sortedChunks) {
         const chunkTokens = estimateTokens(chunk.content);
         if (currentTokens + chunkTokens > maxTokens) {
-            console.log(`[TokenGuard] Context limit reached (${currentTokens}/${maxTokens} tokens). Pruning remaining chunks.`);
+            logger.info('[TokenGuard] Context limit reached', { currentTokens, maxTokens });
             break;
         }
         currentTokens += chunkTokens;
@@ -60,4 +61,3 @@ export const pruneRetrievedChunks = (chunks) => {
     // Maintain original chronological ordering (assuming original array was ordered by chunkIndex or document flow)
     return chunks.filter(c => prunedChunks.includes(c));
 };
-

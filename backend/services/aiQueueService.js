@@ -1,4 +1,5 @@
 import { env } from '../config/env.js';
+import { logger } from '../lib/logger.js';
 
 /**
  * Service to execute queued AI requests safely within the rate limit pool.
@@ -54,7 +55,7 @@ class AILocalQueue {
         if (item.timeout) clearTimeout(item.timeout);
 
         this.currentRunning++;
-        console.log(`[Queue Runner] Processing AI request. Current active: ${this.currentRunning}`);
+        logger.info('[AI Queue] Processing request', { active: this.currentRunning, queued: this.queue.length });
 
         item.task().finally(() => {
             this.currentRunning--;

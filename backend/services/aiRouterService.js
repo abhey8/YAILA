@@ -1,4 +1,5 @@
 import { env } from '../config/env.js';
+import { logger } from '../lib/logger.js';
 
 /**
  * Service to intelligently route queries to the most cost-effective and capable AI model.
@@ -44,15 +45,15 @@ export const routeAIRequest = (prompt, history = []) => {
     
     switch (complexity) {
         case 'complex':
-            console.log("[AI Router] Routing to: gemini-2.5-pro for complex query.");
+            logger.info('[AI Router] Model selected', { complexity, model: 'gemini-2.5-pro' });
             return 'gemini-2.5-pro';
         case 'simple':
-            console.log("[AI Router] Routing to: gemini-2.5-flash-lite for simple query.");
+            logger.info('[AI Router] Model selected', { complexity, model: 'gemini-2.5-flash' });
             // Assuming Flash-Lite is available, else fallback to standard flash.
             return 'gemini-2.5-flash'; 
         case 'medium':
         default:
-            console.log("[AI Router] Routing to: gemini-2.5-flash for standard query.");
+            logger.info('[AI Router] Model selected', { complexity: 'medium', model: 'gemini-2.5-flash' });
             return 'gemini-2.5-flash';
     }
 };

@@ -1,7 +1,6 @@
 import ChatHistory from '../models/ChatHistory.js';
 import { asyncHandler } from '../lib/asyncHandler.js';
 import { AppError } from '../lib/errors.js';
-import { formatChunksForPrompt, sampleChunksForPrompt } from '../lib/documentContext.js';
 import { documentRepository } from '../repositories/documentRepository.js';
 import { chunkRepository } from '../repositories/chunkRepository.js';
 import { conceptRepository } from '../repositories/conceptRepository.js';

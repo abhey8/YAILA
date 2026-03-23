@@ -3,6 +3,14 @@ node_modules/
 .DS_Store
 .env
 *.log
+debug_errors.log
+
+# Runtime uploads and temp artifacts
+backend/uploads/*
+!backend/uploads/.gitkeep
+backend/.mongo-bin/
+backend/.mongo-runtime/
+backend/.mongo-tmp/
 
 # Build files
 dist/

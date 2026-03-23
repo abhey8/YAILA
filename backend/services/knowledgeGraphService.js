@@ -1,5 +1,6 @@
 import { sampleChunksForPrompt } from '../lib/documentContext.js';
 import { slugify } from '../lib/text.js';
+import { logger } from '../lib/logger.js';
 import { chunkRepository } from '../repositories/chunkRepository.js';
 import { conceptRepository } from '../repositories/conceptRepository.js';
 import { masteryRepository } from '../repositories/masteryRepository.js';
@@ -44,7 +45,7 @@ export const rebuildKnowledgeGraph = async (document) => {
              await new Promise((resolve) => setTimeout(resolve, 4000));
              extracted = await generateJson(toExtractionPrompt(document.title, batchChunks));
         } catch (err) {
-            console.error('Failed to extract knowledge graph batch', err);
+            logger.warn('[KnowledgeGraph] Batch extraction failed', { error: err.message, documentId: document._id.toString() });
             continue;
         }
 

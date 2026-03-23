@@ -4,6 +4,7 @@ import { generateText } from './aiService.js';
 import { retrieveRelevantChunks } from './retrievalService.js';
 import { conceptRepository } from '../repositories/conceptRepository.js';
 import { updateConceptMastery } from './masteryService.js';
+import { logger } from '../lib/logger.js';
 
 const NOT_FOUND_MESSAGE = 'Information not found in uploaded materials.';
 
@@ -247,7 +248,9 @@ export const chatWithDocuments = async ({
         }
 
         // Store cache in background
-        setCachedResponse(cacheKey, reply).catch(e => console.error(e));
+        setCachedResponse(cacheKey, reply).catch((error) => {
+            logger.warn('[Chat] Cache write skipped', { error: error.message });
+        });
     }
 
     let chatSession = documentIds.length === 1

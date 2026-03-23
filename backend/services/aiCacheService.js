@@ -1,6 +1,7 @@
 import crypto from 'crypto';
 import AICache from '../models/AICache.js';
 import { env } from '../config/env.js';
+import { logger } from '../lib/logger.js';
 
 /**
  * Service to handle caching of AI responses to reduce API costs.
@@ -19,11 +20,11 @@ export const getCachedResponse = async (cacheKey) => {
     try {
         const cached = await AICache.findOne({ cacheKey }).lean();
         if (cached) {
-            console.log(`[AI Cache Hit] Reusing generated response for key: ${cacheKey}`);
+            logger.info('[AI Cache] Hit', { cacheKey });
             return cached.response;
         }
     } catch (err) {
-        console.error("AI Cache read failed, proceeding without cache:", err.message);
+        logger.warn('[AI Cache] Read failed', { error: err.message });
     }
     
     return null;
@@ -39,6 +40,6 @@ export const setCachedResponse = async (cacheKey, response) => {
             { upsert: true, returnDocument: 'after' }
         );
     } catch (err) {
-        console.error("AI Cache Write Failed:", err.message);
+        logger.warn('[AI Cache] Write failed', { error: err.message });
     }
 };
