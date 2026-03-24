@@ -7,6 +7,13 @@ import { updateConceptMastery } from './masteryService.js';
 import { logger } from '../lib/logger.js';
 
 const NOT_FOUND_MESSAGE = 'Information not found in uploaded materials.';
+const LOW_VALUE_PATTERNS = [
+    /this page intentionally left blank/i,
+    /\bto martha\b/i,
+    /\babout the author\b/i,
+    /\bcopyright\b/i,
+    /\ball rights reserved\b/i
+];
 
 const normalizeText = (value = '') => value.toLowerCase().replace(/\s+/g, ' ').trim();
 
@@ -81,6 +88,12 @@ const buildFallbackReplyFromChunks = (question, chunks = []) => {
     return `I could not reach the AI model right now, so here are the most relevant excerpts from your uploaded materials for "${question}":\n${excerpts}`;
 };
 
+const isLowValueChunk = (chunk) => {
+    const content = (chunk?.content || '').replace(/\s+/g, ' ').trim();
+    if (content.length < 80) return true;
+    return LOW_VALUE_PATTERNS.some((pattern) => pattern.test(content));
+};
+
 const buildPrompt = ({ documentTitles, message, chunks, history }) => {
     const context = chunks.map((chunk, index) => (
         `Source ${index + 1}\nDocument: ${chunk.documentTitle}\nSection: ${chunk.sectionTitle || 'Untitled Section'}\nExcerpt:\n${chunk.content}`
@@ -151,11 +164,21 @@ export const chatWithDocuments = async ({
     const documentIds = documents.map((document) => document._id);
     const documentTitles = documents.map((document) => document.title || document.originalName);
 
-    const chunks = await retrieveRelevantChunks({
+    if (isGreetingIntent(message)) {
+        return {
+            reply: `Ready to help you study ${documentTitles[0] || 'your document'}. Ask for summary, flashcards, quiz questions, or explain a topic.`,
+            retrievedChunks: [],
+            citations: [],
+            concepts: []
+        };
+    }
+
+    const rawChunks = await retrieveRelevantChunks({
         userId,
         documentIds,
         query: message
     });
+    const chunks = rawChunks.filter((chunk) => !isLowValueChunk(chunk));
 
     const hasProcessingDocs = documents.some(doc => ['queued', 'extracting', 'processing', 'embedding_partial'].includes(doc.ingestionStatus));
     
@@ -183,8 +206,16 @@ export const chatWithDocuments = async ({
     if (!chunks.length || (chunks[0]?.rerankScore ?? 0) < 0.03) {
         return {
             reply: NOT_FOUND_MESSAGE,
-            retrievedChunks: [],
-            citations: [],
+            retrievedChunks: rawChunks.slice(0, 2).map((chunk) => ({
+                id: chunk._id,
+                content: chunk.content,
+                score: chunk.rerankScore,
+                documentId: chunk.document,
+                documentTitle: chunk.documentTitle,
+                sectionTitle: chunk.sectionTitle || 'Untitled Section',
+                chunkIndex: chunk.chunkIndex
+            })),
+            citations: uniqueCitations(rawChunks.slice(0, 2)),
             concepts: []
         };
     }

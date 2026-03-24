@@ -9,7 +9,14 @@ export const getRoadmap = asyncHandler(async (req, res) => {
         throw new AppError('Document not found', 404, 'DOCUMENT_NOT_FOUND');
     }
 
-    const roadmap = await getCurrentRoadmap(req.user._id, document._id);
+    let roadmap = await getCurrentRoadmap(req.user._id, document._id);
+    if (!roadmap && document.ingestionStatus === 'completed') {
+        try {
+            roadmap = await generateRoadmap(req.user._id, document._id, 'auto-on-open');
+        } catch (error) {
+            roadmap = null;
+        }
+    }
     res.json(roadmap);
 });
 

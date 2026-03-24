@@ -82,7 +82,7 @@ export default function Dashboard() {
           transition={{ delay: 0.1 }}
           className="text-[var(--muted-foreground)] text-lg"
         >
-          Your redesigned learning workspace is now connected to the live backend.
+          Keep building your learning streak.
         </motion.p>
       </div>
 

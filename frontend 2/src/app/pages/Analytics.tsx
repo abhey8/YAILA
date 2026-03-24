@@ -5,7 +5,7 @@ export default function Analytics() {
   return (
     <ComingSoon
       title="Advanced Analytics"
-      description="The redesigned analytics workspace is ready, but the backend does not yet expose a dedicated analytics page API beyond dashboard stats. This screen is intentionally gated to avoid speculative requests."
+      description="This module is temporarily disabled while core study flow is being stabilized."
       icon={BarChart3}
     />
   );
