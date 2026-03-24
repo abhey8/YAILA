@@ -29,8 +29,10 @@ router.get('/test', async (req, res) => {
         const result = await embedTexts(["Test text 1", "Test text 2"]);
         res.json({
             success: true,
-            openrouterApiKey: (env.openrouterApiKey || '').slice(0, 10) + '...',
-            model: env.openrouterModel,
+            provider: env.aiProvider,
+            geminiApiKey: env.geminiApiKey ? (env.geminiApiKey.slice(0, 10) + '...') : '',
+            openrouterApiKey: env.openrouterApiKey ? (env.openrouterApiKey.slice(0, 10) + '...') : '',
+            model: env.aiProvider === 'gemini' ? env.geminiChatModel : env.openrouterModel,
             length: result.length,
             sample: result[0]?.slice(0, 3) 
         });

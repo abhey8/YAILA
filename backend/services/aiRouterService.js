@@ -2,7 +2,7 @@ import { env } from '../config/env.js';
 import { logger } from '../lib/logger.js';
 
 /**
- * Service to route requests to the configured OpenRouter model.
+ * Service to route requests to the configured provider model.
  */
 
 // Basic word count proxy for token lengths and complexity.
@@ -28,7 +28,13 @@ export const detectComplexity = (prompt, historyLength = 0) => {
  * Decides the correct model to route the AI response through, handling fallbacks securely.
  */
 export const routeAIRequest = (prompt, history = []) => {
-    const configuredModel = env.openrouterModel || 'anthropic/claude-3.5-sonnet';
+    const provider = env.aiProvider === 'gemini'
+        || (env.aiProvider === 'auto' && env.geminiApiKey)
+        ? 'gemini'
+        : 'openrouter';
+    const configuredModel = provider === 'gemini'
+        ? (env.geminiChatModel || 'gemini-2.5-flash')
+        : (env.openrouterModel || 'anthropic/claude-3.5-sonnet');
     if (!env.aiRoutingEnabled) {
         return configuredModel;
     }
