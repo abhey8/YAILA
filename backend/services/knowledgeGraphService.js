@@ -1,6 +1,7 @@
 import { sampleChunksForPrompt } from '../lib/documentContext.js';
 import { slugify } from '../lib/text.js';
 import { logger } from '../lib/logger.js';
+import { env } from '../config/env.js';
 import { chunkRepository } from '../repositories/chunkRepository.js';
 import { conceptRepository } from '../repositories/conceptRepository.js';
 import { masteryRepository } from '../repositories/masteryRepository.js';
@@ -29,41 +30,83 @@ Focus on concrete study concepts, not generic words.
 ${excerpt}`;
 };
 
-export const rebuildKnowledgeGraph = async (document) => {
-    const allChunks = await chunkRepository.listByDocument(document._id);
-    const chunks = sampleChunksForPrompt(allChunks, 40);
-    const uniqueConcepts = [];
+const buildDeterministicGraphConcepts = (chunks) => {
     const seen = new Set();
-    const batchSize = 10;
-    
-    // Process chunks in batches to avoid overwhelming context limits, extracting graph holistically
-    for (let i = 0; i < chunks.length; i += batchSize) {
-        const batchChunks = chunks.slice(i, i + batchSize);
-        let extracted = [];
-        try {
-             // 4 second stagger to respect Gemini Free Tier 15 RPM
-             await new Promise((resolve) => setTimeout(resolve, 4000));
-             extracted = await generateJson(toExtractionPrompt(document.title, batchChunks));
-        } catch (err) {
-            logger.warn('[KnowledgeGraph] Batch extraction failed', { error: err.message, documentId: document._id.toString() });
-            continue;
-        }
+    const concepts = [];
 
-        extracted.forEach((item) => {
-            const slug = slugify(item.name);
-            if (!slug || seen.has(slug)) {
-                return; // deduplicate
-            }
+    for (const chunk of chunks) {
+        if (concepts.length >= 28) break;
+        const name = (chunk.sectionTitle || chunk.keywords?.[0] || '').trim();
+        const slug = slugify(name);
+        if (!name || !slug || seen.has(slug)) continue;
+        seen.add(slug);
 
-            seen.add(slug);
-            uniqueConcepts.push({
-                ...item,
-                slug
-            });
+        concepts.push({
+            name,
+            slug,
+            description: (chunk.summary || chunk.content || '').replace(/\s+/g, ' ').trim().slice(0, 260),
+            parentName: null,
+            prerequisiteNames: [],
+            keywords: Array.isArray(chunk.keywords) ? chunk.keywords.slice(0, 8) : [],
+            difficulty: 0.5,
+            importance: 0.5
         });
     }
 
-    const embeddings = await embedTexts(uniqueConcepts.map((concept) => `${concept.name}\n${concept.description}`));
+    return concepts;
+};
+
+export const rebuildKnowledgeGraph = async (document) => {
+    const allChunks = await chunkRepository.listByDocument(document._id);
+    const chunks = sampleChunksForPrompt(allChunks, 40);
+    let uniqueConcepts = [];
+
+    if (env.lowCreditMode) {
+        uniqueConcepts = buildDeterministicGraphConcepts(chunks);
+    } else {
+        const seen = new Set();
+        const batchSize = 10;
+
+        for (let i = 0; i < chunks.length; i += batchSize) {
+            const batchChunks = chunks.slice(i, i + batchSize);
+            let extracted = [];
+            try {
+                extracted = await generateJson(toExtractionPrompt(document.title, batchChunks));
+            } catch (err) {
+                logger.warn('[KnowledgeGraph] Batch extraction failed', { error: err.message, documentId: document._id.toString() });
+                continue;
+            }
+
+            extracted.forEach((item) => {
+                const slug = slugify(item.name);
+                if (!slug || seen.has(slug)) {
+                    return;
+                }
+                seen.add(slug);
+                uniqueConcepts.push({
+                    ...item,
+                    slug
+                });
+            });
+        }
+    }
+
+    if (!uniqueConcepts.length) {
+        uniqueConcepts = buildDeterministicGraphConcepts(chunks);
+    }
+
+    if (!uniqueConcepts.length) {
+        document.conceptCount = 0;
+        await document.save();
+        return [];
+    }
+
+    let embeddings = [];
+    try {
+        embeddings = await embedTexts(uniqueConcepts.map((concept) => `${concept.name}\n${concept.description}`));
+    } catch (error) {
+        embeddings = uniqueConcepts.map(() => []);
+    }
 
     await conceptRepository.deleteByDocument(document._id);
 

@@ -219,7 +219,7 @@ export const chatWithDocuments = async ({
             // [OPTIMISATION] Queue & Rate limiter
             reply = await aiQueueService.enqueue(
                 () => generateText(prompt, { model: selectedModel }),
-                45000
+                18000
             );
             reply = stripModelSourcesLine(reply);
         } catch (error) {

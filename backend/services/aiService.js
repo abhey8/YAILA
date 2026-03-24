@@ -4,7 +4,7 @@ import { stripCodeFences } from '../lib/text.js';
 
 const DEFAULT_EMBEDDING_MODEL = 'text-embedding-3-small';
 const EMBEDDING_BATCH_SIZE = 32;
-const REQUEST_TIMEOUT_MS = 35000;
+const REQUEST_TIMEOUT_MS = 15000;
 
 const delay = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 
@@ -170,4 +170,3 @@ export const embedTexts = async (texts = []) => {
 
     return vectors;
 };
-

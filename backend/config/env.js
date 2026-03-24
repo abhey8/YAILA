@@ -13,6 +13,7 @@ export const env = {
     openrouterAppName: process.env.OPENROUTER_APP_NAME || 'AI Learning Platform',
     openrouterSiteUrl: process.env.OPENROUTER_SITE_URL || '',
     aiMaxOutputTokens: Number(process.env.AI_MAX_OUTPUT_TOKENS || 1200),
+    lowCreditMode: process.env.LOW_CREDIT_MODE !== 'false',
     embeddingDimensions: Number(process.env.EMBEDDING_DIMENSIONS || 768),
     retrievalTopK: Number(process.env.RETRIEVAL_TOP_K || 6),
     roadmapRefreshHours: Number(process.env.ROADMAP_REFRESH_HOURS || 168),
