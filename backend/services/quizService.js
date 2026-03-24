@@ -116,7 +116,12 @@ const fallbackQuizFromConcepts = (concepts, count) => {
             .slice(0, 3)
             .map((item) => `${item.name}: ${item.description}`);
         const correct = `${concept.name}: ${concept.description}`;
-        const options = shuffleArray([correct, ...distractors]).slice(0, 4);
+        const fillerDistractors = [
+            `A broad overview statement that does not define ${concept.name}.`,
+            `An unrelated interpretation that is not supported for ${concept.name}.`,
+            `A partially true statement missing the key meaning of ${concept.name}.`
+        ];
+        const options = shuffleArray([correct, ...distractors, ...fillerDistractors]).slice(0, 4);
 
         questions.push({
             question: `Which option best describes the concept "${concept.name}" from the uploaded material?`,
@@ -150,7 +155,12 @@ const fallbackQuizFromChunks = (chunks, count) => {
             .slice(0, 3)
             .map((entry) => entry.snippet);
         const correct = target.snippet;
-        const options = shuffleArray([correct, ...distractorSnippets]).slice(0, 4);
+        const fillerDistractors = [
+            `The excerpt does not support this statement about ${target.sectionTitle}.`,
+            `This option generalizes beyond what ${target.sectionTitle} states.`,
+            `This statement contradicts the provided excerpt from ${target.sectionTitle}.`
+        ];
+        const options = shuffleArray([correct, ...distractorSnippets, ...fillerDistractors]).slice(0, 4);
         questions.push({
             question: `According to ${target.sectionTitle}, which statement is supported by the document?`,
             options,
