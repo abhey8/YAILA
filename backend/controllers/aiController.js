@@ -68,6 +68,13 @@ const fallbackTopicExplanation = ({ topic, contextText = '', chunks = [] }) => {
     ].join('\n');
 };
 
+const isSummaryTooShort = (text = '') => {
+    const words = text.trim().split(/\s+/).filter(Boolean).length;
+    const lines = text.split('\n').map((line) => line.trim()).filter(Boolean).length;
+    const bullets = (text.match(/^[-*]\s+/gm) || []).length;
+    return words < 120 || lines < 8 || bullets < 6;
+};
+
 export const summarizeDocument = asyncHandler(async (req, res) => {
     const document = await documentRepository.findOwnedDocument(req.params.id, req.user._id);
     if (!document) {
@@ -84,7 +91,10 @@ export const summarizeDocument = asyncHandler(async (req, res) => {
     // [OPTIMISATION] Hierarchical Summary
     // We combine the pre-generated chunk summaries from offline processing
     // instead of loading raw chunks, saving massive amount of tokens and hitting Pro dynamically.
-    const chunkSummaries = chunks.map(c => `- ${c.sectionTitle || 'Section'}: ${c.summary}`).join('\n');
+    const chunkSummaries = chunks
+        .slice(0, 40)
+        .map((c) => `- ${c.sectionTitle || 'Section'}: ${(c.summary || c.content || '').replace(/\s+/g, ' ').trim().slice(0, 260)}`)
+        .join('\n');
     const summarySource = chunkSummaries || (document.textContent || '').slice(0, 15000);
 
     let summary = '';
@@ -105,9 +115,15 @@ Requirements:
 - Use concise headings and bullet points.
 - Be specific to the provided section summaries.
 - Mention important terms from the document, not generic filler.
+- Keep the output detailed and study-ready (not just 1-2 lines).
+- For each section, provide at least 2-3 meaningful bullet points.
+- Include concrete terms, methods, and examples where available.
 
 Section Summaries:
-${summarySource}`);
+${summarySource}`, { maxTokens: 700 });
+        if (isSummaryTooShort(summary)) {
+            summary = fallbackStructuredSummary(document, chunks);
+        }
     } catch (error) {
         summary = fallbackStructuredSummary(document, chunks);
     }

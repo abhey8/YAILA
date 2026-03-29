@@ -105,7 +105,7 @@ export default function QuizResult() {
         </button>
         <button
           onClick={() => navigate(documentId ? `/documents/${documentId}` : -1)}
-          className="flex-1 px-6 py-3 bg-white border border-gray-300 text-gray-700 rounded-lg font-medium hover:bg-gray-50 transition-colors"
+          className="flex-1 px-6 py-3 bg-[var(--surface)] border border-[var(--border)] text-[var(--foreground)] rounded-lg font-medium hover:bg-[var(--secondary)] transition-colors"
         >
           Back to Document
         </button>
@@ -135,8 +135,8 @@ export default function QuizResult() {
         </div>
       </div>
 
-      <div className="bg-white rounded-xl border border-gray-200 p-6">
-        <h3 className="text-xl font-bold text-gray-900 mb-6">Detailed Review</h3>
+      <div className="bg-[var(--surface)] rounded-xl border border-[var(--border)] p-6">
+        <h3 className="text-xl font-bold text-[var(--foreground)] mb-6">Detailed Review</h3>
         
         <div className="space-y-6">
           {questions.map((question: any, index: number) => {

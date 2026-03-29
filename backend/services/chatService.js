@@ -1,12 +1,55 @@
 import ChatHistory from '../models/ChatHistory.js';
+import { env } from '../config/env.js';
 import { recordLearningInteraction } from './analyticsService.js';
 import { generateText } from './aiService.js';
+import { evaluateMathExpression, normalizePowerSyntax } from './mathEngineService.js';
 import { retrieveRelevantChunks } from './retrievalService.js';
 import { conceptRepository } from '../repositories/conceptRepository.js';
 import { updateConceptMastery } from './masteryService.js';
 import { logger } from '../lib/logger.js';
 
+
+
 const NOT_FOUND_MESSAGE = 'Information not found in uploaded materials.';
+const DOC_RELEVANCE_THRESHOLD = 0.08;
+
+
+async function maybeUpdateRollingSummary({ chatSession }) {
+
+    if (!chatSession?.messages || chatSession.messages.length < 6) {
+        return;
+    }
+
+    const lastSummaryIndex = [...chatSession.messages]
+        .reverse()
+        .findIndex(m => m.role === 'system_summary');
+
+    if (lastSummaryIndex !== -1 && lastSummaryIndex < 6) {
+        return;
+    }
+
+    const recentText = chatSession.messages
+        .slice(-6)
+        .map(m => `${m.role}: ${m.content}`)
+        .join('\n');
+
+    const prompt = `
+Summarize the key learning discussion below in 2 concise lines.
+Focus on concepts, doubts and progress.
+
+${recentText}
+`;
+
+    try {
+        const summary = await generateText(prompt, { maxTokens: 120 });
+
+        chatSession.messages.push({
+            role: 'system_summary',
+            content: summary.trim()
+        });
+
+    } catch (e) {}
+}
 const LOW_VALUE_PATTERNS = [
     /this page intentionally left blank/i,
     /\bto martha\b/i,
@@ -19,6 +62,32 @@ const normalizeText = (value = '') => value.toLowerCase().replace(/\s+/g, ' ').t
 
 const isGreetingIntent = (message = '') => /^(hi|hello|hey|yo|hola|namaste|good (morning|afternoon|evening))\b/i.test(normalizeText(message));
 const isQuestionGenerationIntent = (message = '') => /(give|generate|create|make).*(question|questions|qs|quiz|mcq)|question.*from.*book|practice.*question|couple\s+qs/i.test(normalizeText(message));
+const isDocumentEvaluationIntent = (message = '') => /(resume|cv|candidate|fit|qualified|qualification|strength|weakness|interview|hire|hiring|suitable)/i.test(normalizeText(message));
+const isHinglishIntent = (message = '') => /(kaise|kya|kyu|kyun|kaun|kaunsi|batao|samjha|samjhao|mujhe|mera|aap|ap|tum|hai|ho|haan|nahi|nhi|thik|theek|kr|kar|se)\b/i.test(normalizeText(message));
+const isLikelyGeneralIntent = (message = '') =>/(how are you|who are you|tell me a joke|weather|news|time|date)/i.test(message)||/\b\d+\s*[\+\-\*\/]\s*\d+\b/.test(message)||/\b\d+\s*(to the power|power)\s*\d+\b/i.test(message)||/\b\d+\s*\*\*\s*\d+\b/.test(message);
+const isLikelyDocIntent = (message = '') => /(document|pdf|book|chapter|section|uploaded|material|notes|from this|according to|summarize|summary|flashcard|quiz|proof|equivalence|logic|quantifier|normal form|xor|biconditional|conditional|de morgan|forall|exists|⊕|∀|∃|¬|∧|∨|→|↔)/i.test(message || '');
+const detectNumericExpression = (message = '') => {
+    const normalized = normalizePowerSyntax(message);
+    const compact = normalized.replace(/\s+/g, '');
+    if (!compact || compact.length > 60) {
+        return null;
+    }
+    if (/[a-z]/i.test(compact)) {
+        return null;
+    }
+    if (!(/[+\-*/()]/.test(compact) || compact.includes('**'))) {
+        return null;
+    }
+    return /^[\d+\-*/().*]+$/.test(compact) ? normalized : null;
+};
+
+const buildGeneralPrompt = ({ message, hinglish }) => `You are a helpful AI assistant.
+Respond naturally and concisely.
+${hinglish ? 'User is speaking Hinglish. Reply in clear Hinglish (Roman Hindi + English mix).' : 'Reply in English unless user asks otherwise.'}
+If asked basic math/facts, answer directly.
+
+User message:
+${message}`;
 
 const parseRequestedQuestionCount = (message = '') => {
     const text = normalizeText(message);
@@ -57,7 +126,7 @@ const buildFallbackQuestionsFromChunks = (message, chunks = []) => {
         questions.push(`${index + 1}. Explain "${keyword}" as presented in ${section}.`);
     }
 
-    return `I could not reach the AI model right now, but based on your uploaded document, here are ${requested} focused practice questions:\n${questions.join('\n')}`;
+    return `Based on your uploaded document, here are ${requested} focused practice questions:\n${questions.join('\n')}`;
 };
 
 const buildFallbackReplyFromChunks = (question, chunks = []) => {
@@ -85,12 +154,16 @@ const buildFallbackReplyFromChunks = (question, chunks = []) => {
         })
         .join('\n');
 
-    return `I could not reach the AI model right now, so here are the most relevant excerpts from your uploaded materials for "${question}":\n${excerpts}`;
+    return `Here are the most relevant excerpts from your uploaded materials for "${question}":\n${excerpts}`;
 };
 
 const isLowValueChunk = (chunk) => {
     const content = (chunk?.content || '').replace(/\s+/g, ' ').trim();
-    if (content.length < 80) return true;
+    // Keep concise but meaningful chunks (common in resumes), only drop extremely short noise.
+    if (content.length < 25) return true;
+    if (content.length < 80) {
+        return LOW_VALUE_PATTERNS.some((pattern) => pattern.test(content));
+    }
     return LOW_VALUE_PATTERNS.some((pattern) => pattern.test(content));
 };
 
@@ -115,6 +188,11 @@ Rules:
 - Keep the answer concise and study-focused.
 - Do NOT include a "Sources:" line in the response body.
 - Provide clean final answer text only.
+- For evaluative questions (e.g., candidate quality from a resume), infer only from provided excerpts and explicitly mention limits/assumptions.
+- Treat retrieved excerpts as definition/law/evidence units and synthesize a direct final answer.
+- For symbolic logic, map operators while reasoning: ⊕ (xor), ∀ (for all), ∃ (there exists), ¬ (not), ∧ (and), ∨ (or), → (implies), ↔ (iff).
+- Do not merely repeat snippets; use them to complete and explain the result.
+- If the user writes in Hinglish, respond in Hinglish with clear, natural phrasing.
 
 Conversation memory:
 ${memory || 'None'}
@@ -152,7 +230,7 @@ const uniqueCitations = (chunks) => {
             seen.add(key);
             return true;
         })
-        .slice(0, 4);
+        .slice(0, 2);
 };
 
 export const chatWithDocuments = async ({
@@ -163,10 +241,43 @@ export const chatWithDocuments = async ({
 }) => {
     const documentIds = documents.map((document) => document._id);
     const documentTitles = documents.map((document) => document.title || document.originalName);
-
-    if (isGreetingIntent(message)) {
+    const numericExpression = detectNumericExpression(message);
+    if (numericExpression) {
         return {
-            reply: `Ready to help you study ${documentTitles[0] || 'your document'}. Ask for summary, flashcards, quiz questions, or explain a topic.`,
+            reply: evaluateMathExpression(numericExpression),
+            retrievedChunks: [],
+            citations: [],
+            concepts: []
+        };
+    }
+
+    const hinglish = isHinglishIntent(message);
+    const intent = isGreetingIntent(message)
+        ? 'social'
+        : (isLikelyGeneralIntent(message) && !isLikelyDocIntent(message) ? 'general' : 'document');
+
+    if (intent === 'social') {
+        return {
+            reply: hinglish
+                ? `Main theek hoon. Tum pucho, document study, summary, flashcards, quiz ya general question mein help karta hoon.`
+                : `I'm doing well. Ask me about your document, or any general question.`,
+            retrievedChunks: [],
+            citations: [],
+            concepts: []
+        };
+    }
+
+    if (intent === 'general') {
+        let generalReply = '';
+        try {
+            generalReply = await generateText(buildGeneralPrompt({ message, hinglish }), { maxTokens: 220 });
+        } catch (error) {
+            generalReply = hinglish
+                ? 'Main help karne ke liye ready hoon. Thoda specific question pucho.'
+                : 'I can help. Please ask a more specific question.';
+        }
+        return {
+            reply: stripModelSourcesLine(generalReply),
             retrievedChunks: [],
             citations: [],
             concepts: []
@@ -203,19 +314,20 @@ export const chatWithDocuments = async ({
         };
     }
 
-    if (!chunks.length || (chunks[0]?.rerankScore ?? 0) < 0.03) {
+    const topScore = chunks[0]?.rerankScore ?? 0;
+    if ((!chunks.length || topScore < DOC_RELEVANCE_THRESHOLD) && !isDocumentEvaluationIntent(message)) {
+        let generalReply = '';
+        try {
+            generalReply = await generateText(buildGeneralPrompt({ message, hinglish }), { maxTokens: 260 });
+        } catch (error) {
+            generalReply = hinglish
+                ? 'Is sawal ka support uploaded material mein clearly nahi mila. Agar chaho to main general explanation de sakta hoon.'
+                : 'I could not find strong support in the uploaded material. I can still give a general explanation.';
+        }
         return {
-            reply: NOT_FOUND_MESSAGE,
-            retrievedChunks: rawChunks.slice(0, 2).map((chunk) => ({
-                id: chunk._id,
-                content: chunk.content,
-                score: chunk.rerankScore,
-                documentId: chunk.document,
-                documentTitle: chunk.documentTitle,
-                sectionTitle: chunk.sectionTitle || 'Untitled Section',
-                chunkIndex: chunk.chunkIndex
-            })),
-            citations: uniqueCitations(rawChunks.slice(0, 2)),
+            reply: stripModelSourcesLine(generalReply),
+            retrievedChunks: [],
+            citations: [],
             concepts: []
         };
     }
@@ -249,7 +361,7 @@ export const chatWithDocuments = async ({
         try {
             // [OPTIMISATION] Queue & Rate limiter
             reply = await aiQueueService.enqueue(
-                () => generateText(prompt, { model: selectedModel }),
+                () => generateText(prompt, { model: selectedModel, maxTokens: env.chatMaxOutputTokens }),
                 18000
             );
             reply = stripModelSourcesLine(reply);
@@ -317,6 +429,9 @@ export const chatWithDocuments = async ({
         conceptIds,
         citations
     });
+    await chatSession.save();
+
+    await maybeUpdateRollingSummary({ chatSession });
     await chatSession.save();
 
     if (matchedConcepts.length) {

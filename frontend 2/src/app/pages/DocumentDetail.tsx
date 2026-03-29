@@ -6,6 +6,53 @@ import { FlashcardComponent } from "../components/FlashcardComponent";
 import { toast } from "sonner";
 import { aiApi, documentApi, flashcardApi, quizApi } from "../../services/api";
 
+function renderReadableSummary(text: string) {
+  const lines = text
+    .split("\n")
+    .map((line) => line.trim())
+    .filter((line) => line.length > 0);
+
+  return (
+    <div className="space-y-3">
+      {lines.map((line, index) => {
+        const heading = line.match(/^#{1,6}\s+(.*)$/);
+        if (heading) {
+          return (
+            <h4 key={index} className="text-[var(--foreground)] font-semibold mt-4 first:mt-0">
+              {heading[1].trim()}
+            </h4>
+          );
+        }
+
+        const bullet = line.match(/^[-*]\s+(.*)$/);
+        if (bullet) {
+          return (
+            <div key={index} className="flex items-start gap-2 text-[var(--foreground-soft)]">
+              <span className="mt-1 text-[var(--accent-primary)]">•</span>
+              <span>{bullet[1].trim()}</span>
+            </div>
+          );
+        }
+
+        const numbered = line.match(/^\d+\.\s+(.*)$/);
+        if (numbered) {
+          return (
+            <div key={index} className="text-[var(--foreground-soft)]">
+              {line}
+            </div>
+          );
+        }
+
+        return (
+          <p key={index} className="text-[var(--foreground-soft)] leading-7">
+            {line.replace(/\*\*/g, "").replace(/\*/g, "")}
+          </p>
+        );
+      })}
+    </div>
+  );
+}
+
 export default function DocumentDetail() {
   const { id } = useParams();
   const navigate = useNavigate();
@@ -485,7 +532,7 @@ export default function DocumentDetail() {
                   {isGeneratingTopicExplanation ? (
                     <p className="text-[var(--muted-foreground)]">Generating topic summary...</p>
                   ) : topicExplanation ? (
-                    <p className="text-[var(--foreground-soft)] leading-7 whitespace-pre-wrap">{topicExplanation}</p>
+                    renderReadableSummary(topicExplanation)
                   ) : (
                     <p className="text-[var(--muted-foreground)]">Topic summary is not ready yet.</p>
                   )}
@@ -523,7 +570,7 @@ export default function DocumentDetail() {
                 <h3 className="text-lg font-semibold text-[var(--foreground)] mb-4">Document Summary</h3>
                 {summary ? (
                   <div className="p-6 rounded-lg border border-[var(--accent-primary)]/20 bg-[var(--accent-soft)]">
-                    <div className="text-[var(--foreground-soft)] leading-8 whitespace-pre-wrap">{summary}</div>
+                    {renderReadableSummary(summary)}
                     <button
                       onClick={() => handleGenerateSummary(true)}
                       disabled={isGenerating || !isDocumentReady}
