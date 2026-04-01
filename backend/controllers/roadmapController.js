@@ -3,6 +3,11 @@ import { AppError } from '../lib/errors.js';
 import { documentRepository } from '../repositories/documentRepository.js';
 import { generateRoadmap, getCurrentRoadmap } from '../services/roadmapService.js';
 
+const isRoadmapStale = (roadmap) => !roadmap
+    || !Array.isArray(roadmap.items)
+    || !roadmap.items.length
+    || roadmap.items.some((item) => !item.concept);
+
 export const getRoadmap = asyncHandler(async (req, res) => {
     const document = await documentRepository.findOwnedDocument(req.params.id, req.user._id);
     if (!document) {
@@ -10,9 +15,13 @@ export const getRoadmap = asyncHandler(async (req, res) => {
     }
 
     let roadmap = await getCurrentRoadmap(req.user._id, document._id);
-    if (!roadmap && document.ingestionStatus === 'completed') {
+    if (isRoadmapStale(roadmap) && document.ingestionStatus === 'completed') {
         try {
-            roadmap = await generateRoadmap(req.user._id, document._id, 'auto-on-open');
+            roadmap = await generateRoadmap(
+                req.user._id,
+                document._id,
+                roadmap ? 'auto-refresh-stale-roadmap' : 'auto-on-open'
+            );
         } catch (error) {
             res.status(error.statusCode || 502).json({
                 success: false,
@@ -63,7 +72,7 @@ export const updateRoadmapItemStatus = asyncHandler(async (req, res) => {
     }
 
     const roadmap = await getCurrentRoadmap(req.user._id, document._id);
-    if (!roadmap) {
+    if (isRoadmapStale(roadmap)) {
         throw new AppError('Roadmap not found', 404, 'ROADMAP_NOT_FOUND');
     }
 
