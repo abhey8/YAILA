@@ -61,13 +61,13 @@ export default function QuizResult() {
       <div>
         <button
           onClick={() => navigate(documentId ? `/documents/${documentId}` : -1)}
-          className="flex items-center gap-2 text-gray-600 hover:text-gray-900 mb-4"
+          className="flex items-center gap-2 text-[var(--foreground-soft)] hover:text-[var(--foreground)] mb-4 transition-colors"
         >
           <ArrowLeft className="w-5 h-5" />
           Back to Document
         </button>
 
-        <h1 className="text-2xl font-bold text-gray-900">Quiz Results</h1>
+        <h1 className="text-2xl font-bold text-[var(--foreground)]">Quiz Results</h1>
       </div>
 
       <motion.div
@@ -98,14 +98,14 @@ export default function QuizResult() {
       <div className="flex gap-4">
         <button
           onClick={() => navigate(`/quiz/${id}`)}
-          className="flex-1 flex items-center justify-center gap-2 px-6 py-3 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg font-medium transition-colors"
+          className="flex-1 flex items-center justify-center gap-2 px-6 py-3 rounded-lg font-medium study-button-primary"
         >
           <RotateCcw className="w-5 h-5" />
           Retake Quiz
         </button>
         <button
           onClick={() => navigate(documentId ? `/documents/${documentId}` : -1)}
-          className="flex-1 px-6 py-3 bg-[var(--surface)] border border-[var(--border)] text-[var(--foreground)] rounded-lg font-medium hover:bg-[var(--secondary)] transition-colors"
+          className="flex-1 px-6 py-3 rounded-lg font-medium study-button-secondary"
         >
           Back to Document
         </button>
@@ -127,7 +127,7 @@ export default function QuizResult() {
             {isGeneratingMore ? "Generating..." : "Generate More (Same Settings)"}
           </button>
           <button
-            onClick={() => navigate("/roadmap")}
+            onClick={() => navigate(documentId ? `/roadmap?documentId=${documentId}` : "/roadmap")}
             className="px-4 py-2 rounded-lg study-button-secondary"
           >
             Back to Learning Roadmap
@@ -135,7 +135,7 @@ export default function QuizResult() {
         </div>
       </div>
 
-      <div className="bg-[var(--surface)] rounded-xl border border-[var(--border)] p-6">
+      <div className="study-panel rounded-xl p-6">
         <h3 className="text-xl font-bold text-[var(--foreground)] mb-6">Detailed Review</h3>
         
         <div className="space-y-6">
@@ -153,14 +153,14 @@ export default function QuizResult() {
               <div key={index} className="space-y-3">
                 <div className="flex items-start gap-3">
                   {isCorrect ? (
-                    <CheckCircle className="w-6 h-6 text-green-600 flex-shrink-0 mt-1" />
+                    <CheckCircle className="w-6 h-6 text-[var(--success)] flex-shrink-0 mt-1" />
                   ) : (
-                    <XCircle className="w-6 h-6 text-red-600 flex-shrink-0 mt-1" />
+                    <XCircle className="w-6 h-6 text-[var(--weak)] flex-shrink-0 mt-1" />
                   )}
                   <div className="flex-1">
                     <div className="flex items-center gap-2 mb-2">
-                      <span className="text-sm font-medium text-gray-600">Question {index + 1}</span>
-                      <span className={`text-sm font-bold ${isCorrect ? "text-green-600" : "text-red-600"}`}>
+                      <span className="text-sm font-medium text-[var(--foreground-soft)]">Question {index + 1}</span>
+                      <span className={`text-sm font-bold ${isCorrect ? "text-[var(--success)]" : "text-[var(--weak)]"}`}>
                         {isCorrect ? "Correct" : "Incorrect"}
                       </span>
                     </div>
@@ -174,20 +174,20 @@ export default function QuizResult() {
                     />
 
                     {!isCorrect && (
-                      <div className="mt-3 p-4 bg-blue-50 border border-blue-200 rounded-lg">
-                        <p className="text-sm font-medium text-blue-900 mb-1">Explanation:</p>
-                        <p className="text-sm text-blue-800">
+                      <div className="mt-3 p-4 rounded-lg study-status-panel-info">
+                        <p className="text-sm font-medium text-[var(--info)] mb-1">Explanation:</p>
+                        <p className="text-sm text-[var(--foreground-soft)]">
                           The correct answer is: <strong>{question.correctAnswer}</strong>
                         </p>
                         {question.explanation ? (
-                          <p className="mt-2 text-sm text-blue-800">{question.explanation}</p>
+                          <p className="mt-2 text-sm text-[var(--foreground-soft)]">{question.explanation}</p>
                         ) : null}
                       </div>
                     )}
                     {isCorrect && question.explanation ? (
-                      <div className="mt-3 p-4 bg-green-50 border border-green-200 rounded-lg">
-                        <p className="text-sm font-medium text-green-900 mb-1">Why this is correct:</p>
-                        <p className="text-sm text-green-800">{question.explanation}</p>
+                      <div className="mt-3 p-4 rounded-lg study-status-panel-success">
+                        <p className="text-sm font-medium text-[var(--success)] mb-1">Why this is correct:</p>
+                        <p className="text-sm text-[var(--foreground-soft)]">{question.explanation}</p>
                       </div>
                     ) : null}
                   </div>

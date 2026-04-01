@@ -26,10 +26,11 @@ const processDocument = async (documentId, source) => {
         await ingestDocument(document);
         try {
             await generateRoadmap(document.user, document._id, `${source}-document-ingestion`);
-        } catch (error) {
-            logger.warn('Roadmap generation skipped after ingestion', {
-                documentId: document._id.toString(),
-                error: error.message
+        } catch (roadmapError) {
+            logger.warn('Roadmap generation skipped after document ingestion', {
+                documentId: documentId.toString(),
+                error: roadmapError.message,
+                source
             });
         }
     } catch (error) {

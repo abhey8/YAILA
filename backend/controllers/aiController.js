@@ -7,72 +7,58 @@ import { conceptRepository } from '../repositories/conceptRepository.js';
 import { generateText } from '../services/aiService.js';
 import { chatWithDocuments } from '../services/chatService.js';
 import { predictConfusion } from '../services/confusionService.js';
-
-const extractKeywords = (text = '') => {
-    const words = (text.toLowerCase().match(/[a-z]{4,}/g) || [])
-        .filter((word) => !['this', 'that', 'with', 'from', 'were', 'have', 'been', 'into', 'your', 'about', 'there', 'their', 'which', 'these', 'those', 'using', 'used', 'also'].includes(word));
-    const freq = new Map();
-    words.forEach((w) => freq.set(w, (freq.get(w) || 0) + 1));
-    return [...freq.entries()].sort((a, b) => b[1] - a[1]).slice(0, 12).map(([word]) => word);
-};
-
-const fallbackStructuredSummary = (document, chunks = []) => {
-    const topChunks = chunks.slice(0, 14);
-    const sectionTitles = [...new Set(topChunks.map((c) => c.sectionTitle).filter(Boolean))].slice(0, 8);
-    const combined = topChunks.map((c) => c.content).join('\n');
-    const keywords = extractKeywords(combined);
-    const importantPoints = topChunks.slice(0, 6).map((chunk) => `- ${chunk.summary || chunk.content.slice(0, 160)}${(chunk.summary || chunk.content).length > 160 ? '...' : ''}`);
-
-    return [
-        '1. Overview',
-        `- ${document.title || document.originalName} covers foundational topics across ${Math.max(sectionTitles.length, 1)} major sections.`,
-        '',
-        '2. Main Topics',
-        ...(sectionTitles.length ? sectionTitles.map((title) => `- ${title}`) : ['- Core concepts extracted from the uploaded material']),
-        '',
-        '3. Key Ideas and Definitions',
-        ...(keywords.length ? keywords.slice(0, 8).map((kw) => `- ${kw}`) : ['- Key terms are still being identified from extracted content']),
-        '',
-        '4. Important Methods, Proofs, or Examples',
-        ...(importantPoints.length ? importantPoints : ['- No detailed methods were extracted in fallback mode']),
-        '',
-        '5. What to Revise First',
-        ...(sectionTitles.length ? sectionTitles.slice(0, 3).map((title) => `- Revise ${title}`) : ['- Start with the opening sections and core definitions'])
-    ].join('\n');
-};
-
-const fallbackTopicExplanation = ({ topic, contextText = '', chunks = [] }) => {
-    const relatedChunks = chunks.slice(0, 3);
-    const contextLines = contextText
-        .split('\n')
-        .filter(Boolean)
-        .slice(0, 4);
-
-    const keyPoints = relatedChunks.map((chunk) => {
-        const text = (chunk.content || '').replace(/\s+/g, ' ').trim();
-        return `- ${text.slice(0, 180)}${text.length > 180 ? '...' : ''}`;
-    });
-
-    return [
-        `Topic: ${topic}`,
-        '',
-        'Core idea:',
-        ...(contextLines.length ? contextLines.map((line) => `- ${line}`) : ['- This topic appears across the uploaded material sections below.']),
-        '',
-        'From your document:',
-        ...(keyPoints.length ? keyPoints : ['- No detailed excerpt was available for this topic yet.']),
-        '',
-        'Dive deeper:',
-        `- Ask: "Give me 3 practice questions on ${topic} from this document."`,
-        `- Ask: "Explain ${topic} with an example from this document."`
-    ].join('\n');
-};
+import { filterStudyWorthChunks } from '../lib/studyContent.js';
 
 const isSummaryTooShort = (text = '') => {
     const words = text.trim().split(/\s+/).filter(Boolean).length;
     const lines = text.split('\n').map((line) => line.trim()).filter(Boolean).length;
     const bullets = (text.match(/^[-*]\s+/gm) || []).length;
     return words < 120 || lines < 8 || bullets < 6;
+};
+
+const cleanSummaryFormatting = (text = '') => text
+    .replace(/^#{1,6}\s*/gm, '')
+    .replace(/^\*\s+/gm, '- ')
+    .replace(/\n{3,}/g, '\n\n')
+    .trim();
+
+const buildStructuredSummaryFallback = (document, chunks) => {
+    const safeChunks = filterStudyWorthChunks(chunks).slice(0, 24);
+    const sectionTitles = [...new Set(
+        safeChunks
+            .map((chunk) => `${chunk.sectionTitle || ''}`.trim())
+            .filter((title) => title && title.toLowerCase() !== 'untitled section')
+    )].slice(0, 6);
+    const keywords = [...new Set(
+        safeChunks.flatMap((chunk) => Array.isArray(chunk.keywords) ? chunk.keywords : [])
+    )].slice(0, 10);
+    const methodChunks = safeChunks
+        .filter((chunk) => /(proof|theorem|example|method|algorithm|rule|law)/i.test(`${chunk.sectionTitle || ''} ${chunk.summary || chunk.content || ''}`))
+        .slice(0, 4);
+    const overviewChunks = safeChunks.slice(0, 3);
+    const reviseChunks = safeChunks
+        .slice(0, 5)
+        .sort((left, right) => (right.tokenCount || 0) - (left.tokenCount || 0))
+        .slice(0, 3);
+
+    const lines = [
+        'Overview:',
+        ...overviewChunks.map((chunk) => `- ${(chunk.summary || chunk.content || '').replace(/\s+/g, ' ').trim().slice(0, 220)}`),
+        '',
+        'Main Topics:',
+        ...(sectionTitles.length ? sectionTitles.map((title) => `- ${title}`) : ['- Key sections are still being identified from the document content.']),
+        '',
+        'Key Ideas and Definitions:',
+        ...(keywords.length ? keywords.map((keyword) => `- ${keyword}`) : overviewChunks.map((chunk) => `- ${(chunk.summary || '').slice(0, 120)}`)),
+        '',
+        'Important Methods, Proofs, or Examples:',
+        ...(methodChunks.length ? methodChunks.map((chunk) => `- ${(chunk.summary || chunk.content || '').replace(/\s+/g, ' ').trim().slice(0, 220)}`) : ['- No explicit method/proof/example section was confidently extracted from the current chunks.']),
+        '',
+        'What to Revise First:',
+        ...(reviseChunks.length ? reviseChunks.map((chunk) => `- Review ${chunk.sectionTitle || 'this section'}: ${(chunk.summary || chunk.content || '').replace(/\s+/g, ' ').trim().slice(0, 180)}`) : [`- Start with the most central ideas in ${document.title}.`])
+    ];
+
+    return lines.join('\n').trim();
 };
 
 export const summarizeDocument = asyncHandler(async (req, res) => {
@@ -86,7 +72,10 @@ export const summarizeDocument = asyncHandler(async (req, res) => {
         return;
     }
 
-    const chunks = await chunkRepository.listByDocument(document._id);
+    const chunks = filterStudyWorthChunks(await chunkRepository.listByDocument(document._id));
+    if (!chunks.length) {
+        throw new AppError('Summary source content is not available yet', 400, 'SUMMARY_SOURCE_EMPTY');
+    }
     
     // [OPTIMISATION] Hierarchical Summary
     // We combine the pre-generated chunk summaries from offline processing
@@ -121,12 +110,33 @@ Requirements:
 
 Section Summaries:
 ${summarySource}`, { maxTokens: 700 });
+
         if (isSummaryTooShort(summary)) {
-            summary = fallbackStructuredSummary(document, chunks);
+            summary = await generateText(`Improve the summary quality below.
+Make it detailed, specific, and readable for revision.
+Keep sections exactly:
+1. Overview
+2. Main Topics
+3. Key Ideas and Definitions
+4. Important Methods, Proofs, or Examples
+5. What to Revise First
+
+Current summary:
+${summary}
+
+Reference section summaries:
+${summarySource}`, { maxTokens: 760 });
         }
     } catch (error) {
-        summary = fallbackStructuredSummary(document, chunks);
+        summary = buildStructuredSummaryFallback(document, chunks);
     }
+
+    summary = cleanSummaryFormatting(summary);
+
+    if (isSummaryTooShort(summary)) {
+        summary = buildStructuredSummaryFallback(document, chunks);
+    }
+
     document.summary = summary;
     await document.save();
 
@@ -148,12 +158,20 @@ export const explainText = asyncHandler(async (req, res) => {
     }
 
     const complexity = mode === 'deep' ? 'Provide a technical explanation with detail.' : 'Explain simply for a student.';
-    let explanation = '';
-    try {
-        explanation = await generateText(`${complexity}\n\nQuestion or concept: ${text}\n\nRelevant concept map context:\n${context}`);
-    } catch (error) {
-        explanation = fallbackTopicExplanation({ topic: text, contextText: context, chunks: relatedChunks });
-    }
+    const contextExcerpt = relatedChunks
+        .slice(0, 8)
+        .map((chunk, index) => `Excerpt ${index + 1} (${chunk.sectionTitle || 'Section'}): ${(chunk.summary || chunk.content || '').replace(/\s+/g, ' ').trim().slice(0, 260)}`)
+        .join('\n');
+    const explanation = await generateText(`${complexity}
+
+Question or concept: ${text}
+
+Relevant concept map context:
+${context}
+
+Relevant document excerpts:
+${contextExcerpt}`, { maxTokens: 520 });
+
     res.json({ explanation });
 });
 

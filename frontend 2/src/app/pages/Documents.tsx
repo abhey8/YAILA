@@ -63,15 +63,15 @@ export default function Documents() {
 
   const getStatusBadge = (document: any) => {
     if (document.ingestionStatus === "completed" && document.conceptCount > 0) {
-      return { icon: CheckCircle, label: "Graph Ready", classes: "bg-blue-500/20 text-blue-300" };
+      return { icon: CheckCircle, label: "Graph Ready", classes: "status-info" };
     }
     if (document.ingestionStatus === "completed") {
-      return { icon: Zap, label: "Ready", classes: "bg-green-500/20 text-green-300" };
+      return { icon: Zap, label: "Ready", classes: "status-success" };
     }
     if (document.ingestionStatus === "failed") {
-      return { icon: Clock, label: "Failed", classes: "bg-red-500/20 text-red-300" };
+      return { icon: Clock, label: "Failed", classes: "status-weak" };
     }
-    return { icon: Clock, label: "Processing", classes: "bg-yellow-500/20 text-yellow-300" };
+    return { icon: Clock, label: "Processing", classes: "status-warning" };
   };
 
   return (
@@ -90,7 +90,7 @@ export default function Documents() {
             className={`p-3 rounded-xl transition-all ${
               viewMode === "grid"
                 ? "bg-gradient-to-r from-[var(--accent-primary)] to-[var(--accent-secondary)] text-white shadow-lg shadow-[var(--accent-primary)]/20"
-                : "bg-[var(--secondary)] text-[var(--muted-foreground)] hover:bg-[var(--secondary)]/80"
+                : "study-button-secondary text-[var(--foreground-soft)] hover:text-[var(--foreground)]"
             }`}
           >
             <Grid className="w-5 h-5" />
@@ -100,7 +100,7 @@ export default function Documents() {
             className={`p-3 rounded-xl transition-all ${
               viewMode === "list"
                 ? "bg-gradient-to-r from-[var(--accent-primary)] to-[var(--accent-secondary)] text-white shadow-lg shadow-[var(--accent-primary)]/20"
-                : "bg-[var(--secondary)] text-[var(--muted-foreground)] hover:bg-[var(--secondary)]/80"
+                : "study-button-secondary text-[var(--foreground-soft)] hover:text-[var(--foreground)]"
             }`}
           >
             <List className="w-5 h-5" />
@@ -156,7 +156,7 @@ export default function Documents() {
                     </button>
                     <button
                       onClick={() => handleDelete(doc._id)}
-                      className="px-4 py-2 bg-red-500/20 text-red-300 rounded-xl hover:bg-red-500/30 transition-all font-medium"
+                      className="px-4 py-2 rounded-xl transition-all font-medium status-weak hover:brightness-95"
                     >
                       Delete
                     </button>

@@ -63,18 +63,13 @@ class DocumentProcessingQueue {
 
             // Trigger the chunking and embedding pipeline
             await ingestDocument(document);
-
             try {
-                // Post ingestion logic: offline extraction of core concepts for Quizzes
-                const { chunkRepository } = await import('../repositories/chunkRepository.js');
-                const chunks = await chunkRepository.listByDocument(document._id);
-                
-                const { extractConceptsFromChunks } = await import('./conceptExtractionService.js');
-                await extractConceptsFromChunks(document._id, document.user, chunks);
-                
-                await generateRoadmap(document.user, document._id, `background-worker-ingestion`);
-            } catch (err) {
-                 logger.warn('[DocumentQueue] Post-ingestion logic or roadmap generation skipped', { error: err.message });
+                await generateRoadmap(document.user, document._id, 'background-worker-ingestion');
+            } catch (roadmapError) {
+                logger.warn('[DocumentQueue] Roadmap generation skipped after successful ingestion', {
+                    documentId: document._id.toString(),
+                    error: roadmapError.message
+                });
             }
 
         } catch (error) {

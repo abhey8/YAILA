@@ -93,7 +93,7 @@ export default function FlashcardReview() {
 
   if (loading) {
     return (
-      <div className="max-w-4xl mx-auto p-12 text-center text-gray-600 dark:text-gray-300">
+      <div className="max-w-4xl mx-auto p-12 text-center text-[var(--foreground-soft)]">
         Loading flashcards...
       </div>
     );
@@ -104,18 +104,18 @@ export default function FlashcardReview() {
       <div className="max-w-4xl mx-auto">
         <button
           onClick={() => navigate("/documents")}
-          className="flex items-center gap-2 text-gray-600 hover:text-gray-900 mb-6"
+          className="flex items-center gap-2 text-[var(--foreground-soft)] hover:text-[var(--foreground)] mb-6 transition-colors"
         >
           <ArrowLeft className="w-5 h-5" />
           Back to Documents
         </button>
         
-        <div className="bg-white rounded-xl border border-gray-200 p-12 text-center">
-          <h2 className="text-2xl font-bold text-gray-900 mb-2">No Flashcards</h2>
-          <p className="text-gray-600 mb-6">You've removed all flashcards. Go to a document to generate more.</p>
+        <div className="study-panel rounded-xl p-12 text-center">
+          <h2 className="text-2xl font-bold text-[var(--foreground)] mb-2">No Flashcards</h2>
+          <p className="text-[var(--foreground-soft)] mb-6">You've removed all flashcards. Go to a document to generate more.</p>
           <button
             onClick={() => navigate("/documents")}
-            className="px-6 py-3 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg font-medium transition-colors"
+            className="px-6 py-3 rounded-lg font-medium study-button-primary"
           >
             Browse Documents
           </button>
@@ -129,32 +129,32 @@ export default function FlashcardReview() {
       <div>
         <button
           onClick={() => navigate("/documents")}
-          className="flex items-center gap-2 text-gray-600 hover:text-gray-900 mb-4"
+          className="flex items-center gap-2 text-[var(--foreground-soft)] hover:text-[var(--foreground)] mb-4 transition-colors"
         >
           <ArrowLeft className="w-5 h-5" />
           Back to Documents
         </button>
 
         <div className="flex items-center justify-between mb-4">
-          <h1 className="text-2xl font-bold text-gray-900">Flashcard Review</h1>
+          <h1 className="text-2xl font-bold text-[var(--foreground)]">Flashcard Review</h1>
           <button
             onClick={handleShuffle}
-            className="flex items-center gap-2 px-4 py-2 bg-white border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors"
+            className="flex items-center gap-2 px-4 py-2 rounded-lg study-button-secondary"
           >
             <Shuffle className="w-4 h-4" />
             Shuffle
           </button>
         </div>
 
-        <div className="bg-gray-200 rounded-full h-2 mb-2">
+        <div className="study-progress-track rounded-full h-2 mb-2">
           <motion.div
-            className="bg-indigo-600 h-2 rounded-full"
+            className="study-progress-fill h-2 rounded-full"
             initial={{ width: 0 }}
             animate={{ width: `${progress}%` }}
             transition={{ duration: 0.3 }}
           />
         </div>
-        <div className="text-sm text-gray-600 text-right">
+        <div className="text-sm text-[var(--foreground-soft)] text-right">
           {currentIndex + 1} of {flashcards.length}
         </div>
       </div>
@@ -163,9 +163,9 @@ export default function FlashcardReview() {
         <button
           onClick={handlePrevious}
           disabled={currentIndex === 0}
-          className="p-3 rounded-full bg-white border border-gray-300 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+          className="p-3 rounded-full study-button-secondary disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
         >
-          <ChevronLeft className="w-6 h-6 text-gray-700" />
+          <ChevronLeft className="w-6 h-6 text-[var(--foreground)]" />
         </button>
 
         <div className="flex-1">
@@ -192,15 +192,15 @@ export default function FlashcardReview() {
         <button
           onClick={handleNext}
           disabled={currentIndex === flashcards.length - 1}
-          className="p-3 rounded-full bg-white border border-gray-300 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+          className="p-3 rounded-full study-button-secondary disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
         >
-          <ChevronRight className="w-6 h-6 text-gray-700" />
+          <ChevronRight className="w-6 h-6 text-[var(--foreground)]" />
         </button>
       </div>
 
-      <div className="bg-indigo-50 border border-indigo-200 rounded-lg p-4">
-        <h3 className="font-semibold text-indigo-900 mb-2">💡 Tips</h3>
-        <ul className="text-sm text-indigo-800 space-y-1">
+      <div className="study-status-panel-info rounded-lg p-4">
+        <h3 className="font-semibold text-[var(--info)] mb-2">Tips</h3>
+        <ul className="text-sm text-[var(--foreground-soft)] space-y-1">
           <li>• Click on a card to flip it</li>
           <li>• Use arrow buttons to navigate</li>
           <li>• Mark important cards as favorites</li>
@@ -208,8 +208,8 @@ export default function FlashcardReview() {
         </ul>
       </div>
 
-      <div className="bg-white rounded-xl border border-gray-200 p-6">
-        <h3 className="font-semibold text-gray-900 mb-4">All Flashcards</h3>
+      <div className="study-panel rounded-xl p-6">
+        <h3 className="font-semibold text-[var(--foreground)] mb-4">All Flashcards</h3>
         <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-2">
           {flashcards.map((card, index) => (
             <button
@@ -217,10 +217,10 @@ export default function FlashcardReview() {
               onClick={() => setCurrentIndex(index)}
               className={`aspect-square rounded-lg font-medium transition-all ${
                 currentIndex === index
-                  ? "bg-indigo-600 text-white shadow-lg scale-105"
+                  ? "text-white shadow-lg scale-105 bg-[image:var(--accent-gradient)]"
                   : card.isFavorite
-                  ? "bg-red-100 text-red-700 border border-red-300 hover:bg-red-200"
-                  : "bg-gray-100 text-gray-600 border border-gray-300 hover:bg-gray-200"
+                  ? "status-weak"
+                  : "study-button-secondary text-[var(--foreground-soft)] hover:text-[var(--foreground)]"
               }`}
             >
               {index + 1}

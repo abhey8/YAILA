@@ -1,7 +1,6 @@
 import { generateJson, embedTexts } from './aiService.js';
 import { conceptRepository } from '../repositories/conceptRepository.js';
 import { logger } from '../lib/logger.js';
-import { env } from '../config/env.js';
 
 const extractionPrompt = (chunks) => `Analyze the following academic chunks and extract the core concepts.
 Identify only:
@@ -27,54 +26,11 @@ Rules:
 
 const toSlug = (value = '') => value.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
 
-const buildDeterministicConcepts = (documentId, userId, chunks) => {
-    const seen = new Set();
-    const concepts = [];
-    const maxConcepts = 24;
-
-    for (const chunk of chunks) {
-        if (concepts.length >= maxConcepts) break;
-
-        const section = (chunk.sectionTitle || '').trim();
-        const keywords = Array.isArray(chunk.keywords) ? chunk.keywords.slice(0, 6) : [];
-        const baseName = section && section.length > 2 ? section : (keywords[0] || 'Core Concept');
-        const name = baseName.replace(/\s+/g, ' ').trim().slice(0, 80);
-        const slug = toSlug(name);
-        if (!slug || seen.has(slug)) {
-            continue;
-        }
-        seen.add(slug);
-
-        concepts.push({
-            document: documentId,
-            user: userId,
-            name,
-            slug,
-            description: (chunk.summary || chunk.content || '').replace(/\s+/g, ' ').trim().slice(0, 260),
-            importance: 0.45,
-            embedding: [],
-            chunkRefs: [chunk._id],
-            keywords
-        });
-    }
-
-    return concepts;
-};
-
 export const extractConceptsFromChunks = async (documentId, userId, chunks) => {
     try {
         if (!chunks || chunks.length === 0) return;
 
         logger.info(`[Concept Extraction] Starting parallel extraction for document ${documentId}`);
-
-        if (env.lowCreditMode) {
-            const deterministicConcepts = buildDeterministicConcepts(documentId, userId, chunks);
-            if (deterministicConcepts.length) {
-                await conceptRepository.createMany(deterministicConcepts);
-                logger.info(`[Concept Extraction] Saved ${deterministicConcepts.length} deterministic concepts.`);
-            }
-            return;
-        }
 
         // Batch chunks to avoid massive token costs (batch size of 5 chunks)
         const BATCH_SIZE = 5;
@@ -115,12 +71,14 @@ export const extractConceptsFromChunks = async (documentId, userId, chunks) => {
         const results = await Promise.all(conceptPromises);
         const finalConcepts = results.flat().filter(c => c);
 
-        if (finalConcepts.length > 0) {
-            await conceptRepository.createMany(finalConcepts);
-            logger.info(`[Concept Extraction] Successfully saved ${finalConcepts.length} concepts.`);
+        if (!finalConcepts.length) {
+            throw new Error('No concepts extracted from AI output');
         }
+        await conceptRepository.createMany(finalConcepts);
+        logger.info(`[Concept Extraction] Successfully saved ${finalConcepts.length} concepts.`);
         
     } catch (err) {
         logger.error(`[Concept Extraction] Overall extraction failed: ${err.message}`);
+        throw err;
     }
 };

@@ -1,26 +1,46 @@
 import dotenv from 'dotenv';
+import path from 'path';
+import { fileURLToPath } from 'url';
 
-dotenv.config({ override: true });
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+const envPath = path.resolve(__dirname, '..', '.env');
+
+dotenv.config({ path: envPath, override: true, quiet: true });
+
+const legacyProvider = `${process.env.AI_PROVIDER || ''}`.trim().toLowerCase();
+const legacyGeminiKey = `${process.env.GEMINI_API_KEY || ''}`.trim();
+const inferredGroqKey = /^gsk_/i.test(legacyGeminiKey) ? legacyGeminiKey : '';
+const inferredGeminiKey = /^AIza/i.test(legacyGeminiKey) ? legacyGeminiKey : '';
+const normalizedPrimaryProvider = (process.env.AI_PRIMARY_PROVIDER
+    || (legacyProvider === 'gemini' ? 'gemini' : 'groq')
+    || 'groq')
+    .trim()
+    .toLowerCase();
+const normalizedFallbackProvider = (process.env.AI_FALLBACK_PROVIDER
+    || (normalizedPrimaryProvider === 'gemini' ? 'groq' : 'gemini')
+    || 'gemini')
+    .trim()
+    .toLowerCase();
 
 export const env = {
     port: Number(process.env.PORT || 5000),
     mongoUri: process.env.MONGO_URI || 'mongodb://localhost:27017/ai-learning-assistant',
     jwtSecret: process.env.JWT_SECRET || 'change-me',
-    aiProvider: (process.env.AI_PROVIDER || 'auto').toLowerCase(),
-    geminiApiKey: process.env.GEMINI_API_KEY || '',
-    geminiBaseUrl: process.env.GEMINI_BASE_URL || 'https://generativelanguage.googleapis.com/v1beta',
+    aiPrimaryProvider: normalizedPrimaryProvider,
+    aiFallbackProvider: normalizedFallbackProvider,
+    geminiApiKey: `${process.env.GEMINI_API_KEY || inferredGeminiKey}`.trim(),
+    geminiBaseUrl: process.env.GEMINI_BASE_URL || 'https://generativelanguage.googleapis.com',
     geminiChatModel: process.env.GEMINI_CHAT_MODEL || 'gemini-2.5-flash',
     geminiEmbeddingModel: process.env.GEMINI_EMBEDDING_MODEL || 'gemini-embedding-001',
-    openrouterApiKey: process.env.OPENROUTER_API_KEY || '',
-    openrouterBaseUrl: process.env.OPENROUTER_BASE_URL || 'https://openrouter.ai/api/v1',
-    openrouterModel: process.env.OPENROUTER_MODEL || process.env.OPENROUTER_CHAT_MODEL || 'anthropic/claude-3.5-sonnet',
-    openrouterEmbeddingModel: process.env.OPENROUTER_EMBEDDING_MODEL || 'text-embedding-3-small',
-    openrouterAppName: process.env.OPENROUTER_APP_NAME || 'AI Learning Platform',
-    openrouterSiteUrl: process.env.OPENROUTER_SITE_URL || '',
+    groqApiKey: `${process.env.GROQ_API_KEY || inferredGroqKey}`.trim(),
+    groqBaseUrl: process.env.GROQ_BASE_URL || 'https://api.groq.com/openai/v1',
+    groqChatModel: process.env.GROQ_CHAT_MODEL || 'llama-3.1-8b-instant',
     aiMaxOutputTokens: Number(process.env.AI_MAX_OUTPUT_TOKENS || 1200),
     chatMaxOutputTokens: Number(process.env.CHAT_MAX_OUTPUT_TOKENS || 420),
-    lowCreditMode: process.env.LOW_CREDIT_MODE !== 'false',
+    lowCreditMode: process.env.LOW_CREDIT_MODE === 'true',
     embeddingDimensions: Number(process.env.EMBEDDING_DIMENSIONS || 768),
+    localEmbeddingFallbackEnabled: process.env.LOCAL_EMBEDDING_FALLBACK !== 'false',
     retrievalTopK: Number(process.env.RETRIEVAL_TOP_K || 6),
     intelligenceV2Enabled: process.env.INTELLIGENCE_V2_ENABLED === 'true',
     retrievalVectorCandidatePool: Number(process.env.RETRIEVAL_VECTOR_CANDIDATE_POOL || 24),

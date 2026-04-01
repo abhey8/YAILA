@@ -3,9 +3,14 @@ import { asyncHandler } from '../lib/asyncHandler.js';
 import { AppError } from '../lib/errors.js';
 import { documentRepository } from '../repositories/documentRepository.js';
 import { chunkRepository } from '../repositories/chunkRepository.js';
+import { conceptRepository } from '../repositories/conceptRepository.js';
 import { generateJson } from '../services/aiService.js';
 import { trackActivity } from '../services/activityService.js';
 import { sampleChunksForPrompt } from '../lib/documentContext.js';
+import { filterStudyWorthConcepts } from '../lib/studyContent.js';
+
+const MAX_FLASHCARD_ATTEMPTS = 3;
+const SEMANTIC_DUPLICATE_THRESHOLD = 0.75;
 
 const lexicalScore = (needle, haystack) => {
     const tokens = (needle.toLowerCase().match(/[a-z0-9]{3,}/g) || []);
@@ -32,38 +37,126 @@ const selectCitations = (question, chunks) => chunks
         sectionTitle: entry.chunk.sectionTitle || 'Untitled Section'
     }));
 
-const extractKeywords = (text = '') => {
-    const tokens = (text.toLowerCase().match(/[a-z]{4,}/g) || []);
-    const stop = new Set(['this', 'that', 'with', 'from', 'into', 'there', 'their', 'about', 'which', 'using', 'used', 'also', 'have', 'been', 'were', 'they', 'them']);
-    const frequency = new Map();
-    tokens.forEach((token) => {
-        if (!stop.has(token)) {
-            frequency.set(token, (frequency.get(token) || 0) + 1);
+const normalizeFlashcards = (raw = []) => {
+    if (!Array.isArray(raw)) return [];
+    return raw
+        .filter((item) => item && item.question && item.answer)
+        .map((item) => ({
+            question: `${item.question}`.replace(/\s+/g, ' ').trim(),
+            answer: `${item.answer}`.replace(/\s+/g, ' ').trim()
+        }))
+        .filter((item) => item.question.length > 8 && item.answer.length > 8);
+};
+
+const tokenize = (value = '') => `${value}`
+    .toLowerCase()
+    .replace(/[^a-z0-9\s]/g, ' ')
+    .split(/\s+/)
+    .filter((token) => token.length > 2);
+
+const jaccardSimilarity = (left = '', right = '') => {
+    const leftTokens = new Set(tokenize(left));
+    const rightTokens = new Set(tokenize(right));
+    if (!leftTokens.size || !rightTokens.size) {
+        return 0;
+    }
+    let overlap = 0;
+    leftTokens.forEach((token) => {
+        if (rightTokens.has(token)) {
+            overlap += 1;
         }
     });
-    return [...frequency.entries()].sort((a, b) => b[1] - a[1]).slice(0, 20).map(([token]) => token);
+    const union = new Set([...leftTokens, ...rightTokens]).size;
+    return union ? overlap / union : 0;
 };
 
-const buildFallbackFlashcards = (chunks, requestedCount) => {
-    if (!chunks.length) {
-        return [];
-    }
-
-    const allKeywords = extractKeywords(chunks.map((chunk) => chunk.content).join(' '));
-    const cards = [];
-    for (let index = 0; index < requestedCount; index += 1) {
-        const chunk = chunks[index % chunks.length];
-        const keyword = allKeywords[index % Math.max(allKeywords.length, 1)] || 'core concept';
-        const content = (chunk.content || '').replace(/\s+/g, ' ').trim();
-        const answer = content.slice(0, 180) + (content.length > 180 ? '...' : '');
-
-        cards.push({
-            question: `What does the document explain about "${keyword}" in ${chunk.sectionTitle || 'this section'}?`,
-            answer
+const dedupeSemantically = (items = []) => {
+    const deduped = [];
+    for (const candidate of items) {
+        const duplicate = deduped.some((existing) => {
+            const qSimilarity = jaccardSimilarity(existing.question, candidate.question);
+            const aSimilarity = jaccardSimilarity(existing.answer, candidate.answer);
+            return qSimilarity >= SEMANTIC_DUPLICATE_THRESHOLD || (qSimilarity >= 0.64 && aSimilarity >= 0.7);
         });
+        if (!duplicate) {
+            deduped.push(candidate);
+        }
     }
-    return cards;
+    return deduped;
 };
+
+const inferConceptKey = (card, concepts = []) => {
+    const text = `${card.question} ${card.answer}`.toLowerCase();
+    const match = concepts.find((concept) => text.includes((concept.name || '').toLowerCase()));
+    return match ? match.name.toLowerCase() : 'misc';
+};
+
+const enforceConceptCoverage = (cards = [], concepts = [], requestedCount = 10) => {
+    if (cards.length <= requestedCount) {
+        return cards;
+    }
+
+    const buckets = new Map();
+    cards.forEach((card) => {
+        const key = inferConceptKey(card, concepts);
+        const list = buckets.get(key) || [];
+        list.push(card);
+        buckets.set(key, list);
+    });
+
+    const orderedBuckets = [...buckets.values()].sort((a, b) => b.length - a.length);
+    const selected = [];
+    let round = 0;
+    while (selected.length < requestedCount) {
+        let added = false;
+        for (const bucket of orderedBuckets) {
+            if (bucket[round]) {
+                selected.push(bucket[round]);
+                added = true;
+                if (selected.length >= requestedCount) {
+                    break;
+                }
+            }
+        }
+        if (!added) {
+            break;
+        }
+        round += 1;
+    }
+
+    return selected.slice(0, requestedCount);
+};
+
+const buildPrompt = ({
+    requestedCount,
+    sourceDocuments,
+    sampledChunks,
+    concepts,
+    existingQuestions
+}) => `Create ${requestedCount} high-quality study flashcards from these uploaded materials.
+Documents:
+${sourceDocuments.map((document) => `- ${document.title || document.originalName}`).join('\n')}
+
+Concept coverage targets:
+${concepts.length ? concepts.map((concept) => `- ${concept.name}: ${concept.description || ''}`).join('\n') : '- Cover different sections and key definitions'}
+
+Rules:
+- Every flashcard must be grounded in the excerpts below.
+- Cover varied concepts (definitions, methods, distinctions, proof ideas).
+- Avoid semantic duplicates.
+- No outside knowledge.
+- Ignore dedications, publisher pages, blank pages, and author bio material.
+- Keep answers concise but technically meaningful.
+${existingQuestions.length ? `- Do not repeat these questions:\n${existingQuestions.map((q) => `  * ${q}`).join('\n')}` : ''}
+
+Return JSON array only with objects:
+{ "question": "...", "answer": "..." }
+
+Excerpts:
+${sampledChunks.map((chunk, index) => `Excerpt ${index + 1}
+Document: ${chunk.documentTitle}
+Section: ${chunk.sectionTitle || 'Untitled Section'}
+${(chunk.summary || chunk.content || '').replace(/\s+/g, ' ').trim().slice(0, 240)}`).join('\n\n')}`;
 
 export const generateFlashcards = asyncHandler(async (req, res) => {
     const body = req.body || {};
@@ -100,48 +193,77 @@ export const generateFlashcards = asyncHandler(async (req, res) => {
             || sourceDocuments.find((document) => document._id.toString() === chunk.document.toString())?.originalName
             || 'Uploaded Document'
     }));
-    const sampledChunks = sampleChunksForPrompt(chunks, 18);
     const requestedCount = Math.min(
         20,
         Math.max(5, Number(req.query.count) || Number(body.count) || 10)
     );
-    const prompt = `Create ${requestedCount} strong study flashcards from these uploaded materials.
-Documents:
-${sourceDocuments.map((document) => `- ${document.title || document.originalName}`).join('\n')}
+    const sampledChunks = sampleChunksForPrompt(chunks, Math.min(12, Math.max(8, requestedCount + 3)));
+    const concepts = filterStudyWorthConcepts(await conceptRepository.listByDocuments(sourceDocumentIds));
 
-Rules:
-- Every flashcard must be grounded in the excerpts below.
-- Use multiple documents when helpful.
-- Focus on definitions, proof ideas, methods, and distinctions.
-- Do not use outside knowledge.
-- Keep answers short but meaningful.
-
-Return a JSON array with objects containing question and answer.
-
-${sampledChunks.map((chunk, index) => `Excerpt ${index + 1}
-Document: ${chunk.documentTitle}
-Section: ${chunk.sectionTitle || 'Untitled Section'}
-${chunk.content}`).join('\n\n')}`;
-    let flashcardsData = [];
-    try {
-      flashcardsData = await generateJson(prompt, {
-        maxTokens: Math.min(7000, 500 + requestedCount * 220)
-      });
-    } catch (error) {
-      flashcardsData = buildFallbackFlashcards(sampledChunks, requestedCount);
+    if (!sampledChunks.length) {
+        throw new AppError('Flashcards cannot be generated because document content is unavailable', 400, 'FLASHCARD_SOURCE_EMPTY');
     }
 
-    const existingQuestionSet = new Set(existingFlashcards.map((card) => card.question.trim().toLowerCase()));
-    const newItems = (Array.isArray(flashcardsData) ? flashcardsData : [])
-      .filter((item) => item?.question && item?.answer)
-      .filter((item) => {
-        const key = `${item.question}`.trim().toLowerCase();
+    let collected = [];
+    let lastError = null;
+
+    for (let attempt = 1; attempt <= MAX_FLASHCARD_ATTEMPTS; attempt += 1) {
+        try {
+            const payload = await generateJson(
+                buildPrompt({
+                    requestedCount,
+                    sourceDocuments,
+                    sampledChunks,
+                    concepts: concepts.slice(0, 20),
+                    existingQuestions: collected.map((item) => item.question).slice(0, 20)
+                }),
+                { maxTokens: Math.min(6500, 400 + requestedCount * 240) }
+            );
+            const normalized = normalizeFlashcards(payload);
+            collected = dedupeSemantically([...collected, ...normalized]).slice(0, requestedCount * 2);
+            if (collected.length >= requestedCount) {
+                break;
+            }
+        } catch (error) {
+            lastError = error;
+        }
+    }
+
+    if (!collected.length) {
+        throw new AppError('Flashcard generation failed', 502, 'FLASHCARD_GENERATION_FAILED', {
+            requested: requestedCount,
+            generated: 0,
+            reason: lastError?.message || 'No flashcards returned'
+        });
+    }
+
+    let finalCards = enforceConceptCoverage(dedupeSemantically(collected), concepts, requestedCount);
+    finalCards = dedupeSemantically(finalCards).slice(0, requestedCount);
+    const minimumRequired = Math.min(requestedCount, Math.max(5, Math.ceil(requestedCount * 0.6)));
+    if (finalCards.length < minimumRequired) {
+        throw new AppError('Flashcard generation did not meet diversity requirements', 502, 'FLASHCARD_LOW_QUALITY_OUTPUT', {
+            requested: requestedCount,
+            generated: finalCards.length
+        });
+    }
+
+    const baselineCards = shouldRegenerate ? [] : existingFlashcards;
+    const existingQuestionSet = new Set(baselineCards.map((card) => card.question.trim().toLowerCase()));
+    const newItems = finalCards.filter((item) => {
+        const key = item.question.toLowerCase();
         if (!key || existingQuestionSet.has(key)) {
-          return false;
+            return false;
         }
         existingQuestionSet.add(key);
         return true;
-      });
+    });
+
+    if (!newItems.length && !baselineCards.length) {
+        throw new AppError('Flashcard generation produced only duplicate or low-quality items', 502, 'FLASHCARD_LOW_QUALITY_OUTPUT', {
+            requested: requestedCount,
+            generated: 0
+        });
+    }
 
     const flashcards = await Promise.all(
         newItems.map(async (flashcard) => Flashcard.create({
@@ -167,12 +289,12 @@ ${chunk.content}`).join('\n\n')}`;
     });
 
     if (appendMode) {
-      const merged = await Flashcard.find({ document: anchorDocument._id, user: req.user._id });
-      res.json(merged);
-      return;
+        const merged = await Flashcard.find({ document: anchorDocument._id, user: req.user._id });
+        res.json(merged);
+        return;
     }
 
-    res.json(flashcards.length ? flashcards : existingFlashcards);
+    res.json(flashcards.length ? flashcards : baselineCards);
 });
 
 export const getFlashcardsByDocument = asyncHandler(async (req, res) => {

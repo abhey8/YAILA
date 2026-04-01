@@ -1,5 +1,6 @@
 import { normalizeWhitespace, splitParagraphs, tokenizeEstimate } from '../lib/text.js';
 import { logger } from '../lib/logger.js';
+import { isLowValueStudyText } from '../lib/studyContent.js';
 
 const MAX_CHUNK_CHARS = 1400; // About 300 to 500 tokens
 const OVERLAP_CHARS = 250;
@@ -31,22 +32,37 @@ export const buildChunks = (text) => {
     let currentSectionTitle = 'Introduction';
 
     paragraphs.forEach((paragraph) => {
-        if (isLikelyHeading(paragraph)) {
-            currentSectionTitle = paragraph.trim();
+        const cleanParagraph = paragraph.trim();
+        if (!cleanParagraph) {
+            return;
         }
 
-        if (currentLength + paragraph.length > MAX_CHUNK_CHARS && current.length) {
+        if (isLikelyHeading(cleanParagraph)) {
+            if (current.length) {
+                semanticGroups.push({
+                    content: current.join('\n\n'),
+                    sectionTitle: currentSectionTitle
+                });
+            }
+
+            currentSectionTitle = cleanParagraph;
+            current = [cleanParagraph];
+            currentLength = cleanParagraph.length;
+            return;
+        }
+
+        if (currentLength + cleanParagraph.length > MAX_CHUNK_CHARS && current.length) {
             semanticGroups.push({
                 content: current.join('\n\n'),
                 sectionTitle: currentSectionTitle
             });
-            current = [paragraph];
-            currentLength = paragraph.length;
+            current = [cleanParagraph];
+            currentLength = cleanParagraph.length;
             return;
         }
 
-        current.push(paragraph);
-        currentLength += paragraph.length;
+        current.push(cleanParagraph);
+        currentLength += cleanParagraph.length;
     });
 
     if (current.length) {
@@ -58,7 +74,8 @@ export const buildChunks = (text) => {
 
     const filteredGroups = semanticGroups.filter(group => {
         const lowerTitle = group.sectionTitle.toLowerCase();
-        return !LOW_QUALITY_SECTIONS.some(lqs => lowerTitle.includes(lqs));
+        return !LOW_QUALITY_SECTIONS.some(lqs => lowerTitle.includes(lqs))
+            && !isLowValueStudyText(group.content, group.sectionTitle);
     });
 
     let chunks = [];
@@ -73,7 +90,7 @@ export const buildChunks = (text) => {
         const step = Math.max(300, MAX_CHUNK_CHARS - OVERLAP_CHARS);
         for (let start = 0; start < normalized.length; start += step) {
             const content = normalized.slice(start, start + MAX_CHUNK_CHARS).trim();
-            if (!content) {
+            if (!content || isLowValueStudyText(content, group.sectionTitle)) {
                 continue;
             }
 

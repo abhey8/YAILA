@@ -14,9 +14,25 @@ export const getRoadmap = asyncHandler(async (req, res) => {
         try {
             roadmap = await generateRoadmap(req.user._id, document._id, 'auto-on-open');
         } catch (error) {
-            roadmap = null;
+            res.status(error.statusCode || 502).json({
+                success: false,
+                error: 'Roadmap generation failed',
+                message: error.message,
+                stage_failed: error.details?.stage || 'roadmap-generation',
+                details: error.details || null
+            });
+            return;
         }
     }
+
+    if (!roadmap) {
+        res.status(202).json({
+            status: 'generating',
+            items: []
+        });
+        return;
+    }
+
     res.json(roadmap);
 });
 
@@ -26,8 +42,18 @@ export const regenerateRoadmap = asyncHandler(async (req, res) => {
         throw new AppError('Document not found', 404, 'DOCUMENT_NOT_FOUND');
     }
 
-    const roadmap = await generateRoadmap(req.user._id, document._id, req.body.reason || 'manual-refresh');
-    res.json(roadmap);
+    try {
+        const roadmap = await generateRoadmap(req.user._id, document._id, req.body.reason || 'manual-refresh');
+        res.json(roadmap);
+    } catch (error) {
+        res.status(error.statusCode || 502).json({
+            success: false,
+            error: 'Roadmap regeneration failed',
+            message: error.message,
+            stage_failed: error.details?.stage || 'roadmap-generation',
+            details: error.details || null
+        });
+    }
 });
 
 export const updateRoadmapItemStatus = asyncHandler(async (req, res) => {

@@ -48,7 +48,7 @@ export const markNotificationRead = async (userId, notificationId) => {
     const notification = await Notification.findOneAndUpdate(
         { _id: notificationId, user: userId },
         { $set: { readAt: new Date() } },
-        { new: true }
+        { returnDocument: 'after' }
     );
 
     return notification;

@@ -22,9 +22,9 @@ export function FlashcardComponent({
   const [isFlipped, setIsFlipped] = useState(false);
 
   return (
-    <div className="perspective-1000 h-64">
+    <div className="perspective-1000 h-80 flex flex-col">
       <motion.div
-        className="relative w-full h-full cursor-pointer"
+        className="relative w-full flex-1 cursor-pointer"
         onClick={() => setIsFlipped(!isFlipped)}
         animate={{ rotateY: isFlipped ? 180 : 0 }}
         transition={{ duration: 0.6, type: "spring" }}
@@ -55,13 +55,13 @@ export function FlashcardComponent({
         </div>
       </motion.div>
 
-      <div className="flex items-center justify-center gap-2 mt-4">
+      <div className="mt-3 h-11 rounded-xl border border-[var(--border)] bg-[var(--secondary)]/30 flex items-center justify-center gap-2">
         <button
           onClick={(e) => {
             e.stopPropagation();
             onToggleFavorite?.(id);
           }}
-          className={`p-2 rounded-lg transition-colors border ${
+          className={`h-8 w-8 inline-flex items-center justify-center rounded-lg transition-colors border ${
             isFavorite 
               ? "status-weak" 
               : "study-button-secondary text-[var(--muted-foreground)] hover:text-[var(--weak)]"
@@ -74,7 +74,7 @@ export function FlashcardComponent({
             e.stopPropagation();
             onDelete?.(id);
           }}
-          className="p-2 rounded-lg border study-button-secondary text-[var(--muted-foreground)] hover:text-[var(--weak)]"
+          className="h-8 w-8 inline-flex items-center justify-center rounded-lg border study-button-secondary text-[var(--muted-foreground)] hover:text-[var(--weak)]"
         >
           <Trash2 className="w-5 h-5" />
         </button>

@@ -2,6 +2,8 @@ import express from 'express';
 import mongoose from 'mongoose';
 import cors from 'cors';
 import path from 'path';
+import fs from 'fs';
+import { fileURLToPath } from 'url';
 import { MongoMemoryServer } from 'mongodb-memory-server';
 import { env } from './config/env.js';
 import { logger } from './lib/logger.js';
@@ -22,6 +24,11 @@ import activityRoutes from './routes/activityRoutes.js';
 import notificationRoutes from './routes/notificationRoutes.js';
 
 const app = express();
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+const uploadsDir = path.resolve(__dirname, 'uploads');
+
+fs.mkdirSync(uploadsDir, { recursive: true });
 
 process.on('unhandledRejection', (reason) => {
     logger.error('Unhandled promise rejection', {
@@ -35,7 +42,7 @@ process.on('uncaughtException', (error) => {
 
 app.use(cors());
 app.use(express.json());
-app.use('/uploads', express.static(path.resolve(process.cwd(), 'uploads')));
+app.use('/uploads', express.static(uploadsDir));
 
 app.use('/api/auth', authRoutes);
 app.use('/api/documents', documentRoutes);
@@ -61,9 +68,9 @@ app.get('/api/debug-routes', (req, res) => {
 app.use(notFound);
 app.use(errorHandler);
 
-process.env.MONGOMS_DOWNLOAD_DIR = path.join(process.cwd(), '.mongo-bin');
-process.env.MONGOMS_RUNTIME_DIR = path.join(process.cwd(), '.mongo-runtime');
-process.env.TMPDIR = path.join(process.cwd(), '.mongo-tmp');
+process.env.MONGOMS_DOWNLOAD_DIR = path.resolve(__dirname, '.mongo-bin');
+process.env.MONGOMS_RUNTIME_DIR = path.resolve(__dirname, '.mongo-runtime');
+process.env.TMPDIR = path.resolve(__dirname, '.mongo-tmp');
 
 const connectDB = async () => {
     try {

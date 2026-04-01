@@ -17,6 +17,8 @@ export const errorHandler = (error, req, res, next) => {
     });
 
     res.status(statusCode).json({
+        success: false,
+        error: error.message,
         message: error.message,
         code: error.code || 'UNHANDLED_ERROR',
         details: error.details || null

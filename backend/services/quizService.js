@@ -1,5 +1,7 @@
 import Quiz from '../models/Quiz.js';
 import QuizAttempt from '../models/QuizAttempt.js';
+import { AppError } from '../lib/errors.js';
+import { logger } from '../lib/logger.js';
 import { conceptRepository } from '../repositories/conceptRepository.js';
 import { chunkRepository } from '../repositories/chunkRepository.js';
 import { generateJson, embedTexts } from './aiService.js';
@@ -7,56 +9,65 @@ import { recordLearningInteraction } from './analyticsService.js';
 import { updateConceptMastery } from './masteryService.js';
 import { createNotification } from './notificationService.js';
 import { trackActivity } from './activityService.js';
+import { filterStudyWorthConcepts } from '../lib/studyContent.js';
 
 const DIFFICULTY_GUIDANCE = {
     easy: 'Keep questions direct, definition-based, and single-step.',
     medium: 'Mix conceptual understanding with applied interpretation.',
-    hard: 'Use deeper reasoning, multi-concept linkage, and tricky distractors that remain fair and document-grounded.'
+    hard: 'Use deeper reasoning, multi-concept linkage, and fair distractors.'
 };
 
-const buildQuizFromConceptsPrompt = (documents, concepts, count, difficulty) => `Generate a ${count}-question multiple choice quiz from the core extracted study concepts.
+const MAX_GENERATION_ATTEMPTS = 3;
+const SEMANTIC_DUPLICATE_THRESHOLD = 0.72;
+
+const buildQuizFromConceptsPrompt = (documents, concepts, count, difficulty, existingQuestions = []) => `Generate ${count} high-quality MCQs grounded strictly in the provided study concepts.
 Documents:
 ${documents.map((document) => `- ${document.title || document.originalName}`).join('\n')}
 
-Core Concepts to Test:
+Core concepts:
 ${concepts.map((concept) => `- ${concept.name}: ${concept.description}`).join('\n')}
 
-Return a JSON array where each item has:
-- question (testing the concept)
-- options (4 strings)
-- correctAnswer
+Return JSON array only. Each item:
+- question
+- options (array of 4 strings)
+- correctAnswer (must exactly match one option)
 - explanation
-- conceptNames (1-3 concept names from the list)
+- conceptNames (array with 1-3 concept names)
 
 Rules:
-- Questions MUST be derived strictly from the provided Concepts list.
-- Do not use outside knowledge.
-- Focus exclusively on technical, academic, or core concept definitions and formulas.
-- Difficulty level: ${difficulty.toUpperCase()}
-- ${DIFFICULTY_GUIDANCE[difficulty]}`;
+- No outside knowledge.
+- No repeated questions or near-duplicates.
+- Cover varied concepts across the list.
+- Ignore dedications, blank pages, front matter, and author biography content.
+- Difficulty: ${difficulty.toUpperCase()}
+- ${DIFFICULTY_GUIDANCE[difficulty]}
+${existingQuestions.length ? `- Do not repeat these questions:\n${existingQuestions.map((q) => `  * ${q}`).join('\n')}` : ''}`;
 
-const buildQuizFromChunksPrompt = (documents, chunkText, count, difficulty) => `Generate a ${count}-question multiple choice quiz grounded strictly in the provided document excerpts.
+const buildQuizFromChunksPrompt = (documents, chunkText, count, difficulty, existingQuestions = []) => `Generate ${count} MCQs grounded strictly in these document excerpts.
 Documents:
 ${documents.map((document) => `- ${document.title || document.originalName}`).join('\n')}
 
-Document Excerpts:
+Excerpts:
 ${chunkText}
 
-Return a JSON array where each item has:
+Return JSON array only. Each item:
 - question
-- options (4 strings)
-- correctAnswer
+- options (array of 4 strings)
+- correctAnswer (must exactly match one option)
 - explanation
 - conceptNames (array, can be empty)
 
 Rules:
-- Questions must be answerable from the excerpts.
-- Do not use outside knowledge.
-- Keep questions specific and non-repetitive.
-- Difficulty level: ${difficulty.toUpperCase()}
-- ${DIFFICULTY_GUIDANCE[difficulty]}`;
+- Questions must be answerable directly from excerpts.
+- No outside knowledge.
+- Avoid repeated or near-duplicate questions.
+- Maintain concept/topic variety.
+- Ignore dedications, blank pages, front matter, and author biography content.
+- Difficulty: ${difficulty.toUpperCase()}
+- ${DIFFICULTY_GUIDANCE[difficulty]}
+${existingQuestions.length ? `- Do not repeat these questions:\n${existingQuestions.map((q) => `  * ${q}`).join('\n')}` : ''}`;
 
-const normalizeQuestions = (rawQuestions, fallbackCount) => {
+const normalizeQuestions = (rawQuestions, maxCount) => {
     if (!Array.isArray(rawQuestions)) {
         return [];
     }
@@ -69,183 +80,204 @@ const normalizeQuestions = (rawQuestions, fallbackCount) => {
             && item.options.length >= 4
             && typeof item.correctAnswer === 'string'
         )
-        .slice(0, fallbackCount)
+        .slice(0, maxCount)
         .map((item) => {
+            const question = `${item.question}`.replace(/\s+/g, ' ').trim();
             const options = item.options
-                .map((opt) => `${opt}`.trim())
+                .map((option) => `${option}`.replace(/\s+/g, ' ').trim())
                 .filter(Boolean)
                 .slice(0, 4);
-            const correct = options.includes(item.correctAnswer) ? item.correctAnswer : options[0];
+            const uniqueOptions = [...new Set(options)];
+            if (uniqueOptions.length < 4) {
+                return null;
+            }
+            const correctAnswer = uniqueOptions.includes(item.correctAnswer) ? `${item.correctAnswer}`.trim() : uniqueOptions[0];
+            const explanation = `${item.explanation || ''}`.replace(/\s+/g, ' ').trim();
+            const conceptNames = Array.isArray(item.conceptNames)
+                ? item.conceptNames.map((name) => `${name}`.trim()).filter(Boolean).slice(0, 3)
+                : [];
 
             return {
-                question: `${item.question}`.trim(),
-                options,
-                correctAnswer: correct,
-                explanation: `${item.explanation || ''}`.trim(),
-                conceptNames: Array.isArray(item.conceptNames)
-                    ? item.conceptNames.map((name) => `${name}`.trim()).filter(Boolean).slice(0, 3)
-                    : []
+                question,
+                options: uniqueOptions,
+                correctAnswer,
+                explanation,
+                conceptNames
             };
-        });
+        })
+        .filter((item) => item && item.question && item.options.length === 4 && item.correctAnswer);
 };
+
+const tokenize = (value = '') => `${value}`
+    .toLowerCase()
+    .replace(/[^a-z0-9\s]/g, ' ')
+    .split(/\s+/)
+    .filter((token) => token.length > 2);
+
+const jaccardSimilarity = (left = '', right = '') => {
+    const leftTokens = new Set(tokenize(left));
+    const rightTokens = new Set(tokenize(right));
+    if (!leftTokens.size || !rightTokens.size) {
+        return 0;
+    }
+    let overlap = 0;
+    leftTokens.forEach((token) => {
+        if (rightTokens.has(token)) {
+            overlap += 1;
+        }
+    });
+    const union = new Set([...leftTokens, ...rightTokens]).size;
+    return union ? overlap / union : 0;
+};
+
+const dedupeSemantically = (questions = [], threshold = SEMANTIC_DUPLICATE_THRESHOLD) => {
+    const deduped = [];
+    for (const candidate of questions) {
+        const duplicate = deduped.some((existing) => jaccardSimilarity(existing.question, candidate.question) >= threshold);
+        if (!duplicate) {
+            deduped.push(candidate);
+        }
+    }
+    return deduped;
+};
+
+const enforceConceptVariety = (questions = [], desiredCount = 5) => {
+    if (questions.length <= desiredCount) {
+        return questions;
+    }
+
+    const buckets = new Map();
+    questions.forEach((question, index) => {
+        const key = question.conceptNames?.[0]?.toLowerCase() || `__unscoped_${index}`;
+        const list = buckets.get(key) || [];
+        list.push(question);
+        buckets.set(key, list);
+    });
+
+    const orderedBuckets = [...buckets.values()].sort((a, b) => b.length - a.length);
+    const selected = [];
+    let round = 0;
+    while (selected.length < desiredCount) {
+        let added = false;
+        for (const bucket of orderedBuckets) {
+            if (bucket[round]) {
+                selected.push(bucket[round]);
+                added = true;
+                if (selected.length >= desiredCount) {
+                    break;
+                }
+            }
+        }
+        if (!added) {
+            break;
+        }
+        round += 1;
+    }
+
+    return selected.slice(0, desiredCount);
+};
+
+const balanceCorrectAnswerPositions = (questions = []) => questions.map((question, index) => {
+    const targetIndex = index % 4;
+    const options = [...question.options];
+    const correctAnswer = options.includes(question.correctAnswer) ? question.correctAnswer : options[0];
+    const wrongOptions = options.filter((option) => option !== correctAnswer);
+    const balancedOptions = [...wrongOptions];
+    balancedOptions.splice(targetIndex, 0, correctAnswer);
+
+    return {
+        ...question,
+        options: balancedOptions.slice(0, 4),
+        correctAnswer
+    };
+});
 
 const estimateQuizMaxTokens = (count, difficulty) => {
-    const perQuestion = difficulty === 'hard' ? 320 : (difficulty === 'medium' ? 240 : 190);
-    return Math.min(9000, Math.max(1500, 600 + count * perQuestion));
-};
-
-const shuffleArray = (items) => {
-    const arr = [...items];
-    for (let i = arr.length - 1; i > 0; i -= 1) {
-        const j = Math.floor(Math.random() * (i + 1));
-        [arr[i], arr[j]] = [arr[j], arr[i]];
-    }
-    return arr;
-};
-
-const fallbackQuizFromConcepts = (concepts, count) => {
-    if (!concepts.length) {
-        return [];
-    }
-
-    const questions = [];
-    for (let index = 0; index < count; index += 1) {
-        const concept = concepts[index % concepts.length];
-        const distractors = concepts
-            .filter((item) => item._id.toString() !== concept._id.toString())
-            .slice(0, 3)
-            .map((item) => `${item.name}: ${item.description}`);
-        const correct = `${concept.name}: ${concept.description}`;
-        const fillerDistractors = [
-            `A broad overview statement that does not define ${concept.name}.`,
-            `An unrelated interpretation that is not supported for ${concept.name}.`,
-            `A partially true statement missing the key meaning of ${concept.name}.`
-        ];
-        const options = shuffleArray([correct, ...distractors, ...fillerDistractors]).slice(0, 4);
-
-        questions.push({
-            question: `Which option best describes the concept "${concept.name}" from the uploaded material?`,
-            options,
-            correctAnswer: options.includes(correct) ? correct : options[0],
-            explanation: concept.description,
-            conceptNames: [concept.name]
-        });
-    }
-    return questions;
-};
-
-const fallbackQuizFromChunks = (chunks, count) => {
-    if (!chunks.length) {
-        return [];
-    }
-    const cleaned = chunks.map((chunk) => ({
-        sectionTitle: chunk.sectionTitle || 'this section',
-        snippet: (chunk.content || '').replace(/\s+/g, ' ').trim().slice(0, 180)
-    })).filter((entry) => entry.snippet.length > 30);
-
-    if (!cleaned.length) {
-        return [];
-    }
-
-    const questions = [];
-    for (let index = 0; index < count; index += 1) {
-        const target = cleaned[index % cleaned.length];
-        const distractorSnippets = cleaned
-            .filter((entry, idx) => idx !== (index % cleaned.length))
-            .slice(0, 3)
-            .map((entry) => entry.snippet);
-        const correct = target.snippet;
-        const fillerDistractors = [
-            `The excerpt does not support this statement about ${target.sectionTitle}.`,
-            `This option generalizes beyond what ${target.sectionTitle} states.`,
-            `This statement contradicts the provided excerpt from ${target.sectionTitle}.`
-        ];
-        const options = shuffleArray([correct, ...distractorSnippets, ...fillerDistractors]).slice(0, 4);
-        questions.push({
-            question: `According to ${target.sectionTitle}, which statement is supported by the document?`,
-            options,
-            correctAnswer: options.includes(correct) ? correct : options[0],
-            explanation: `This statement comes directly from ${target.sectionTitle}.`,
-            conceptNames: []
-        });
-    }
-
-    return questions;
+    const perQuestion = difficulty === 'hard' ? 280 : (difficulty === 'medium' ? 220 : 180);
+    return Math.min(6500, Math.max(1200, 500 + count * perQuestion));
 };
 
 export const generateAdaptiveQuiz = async (documents, userId, options = {}) => {
     const count = Math.min(20, Math.max(5, Number(options.count) || 5));
     const difficulty = ['easy', 'medium', 'hard'].includes(options.difficulty) ? options.difficulty : 'medium';
     const documentIds = documents.map((document) => document._id);
-    const concepts = await conceptRepository.listByDocuments(documentIds);
+    const concepts = filterStudyWorthConcepts(await conceptRepository.listByDocuments(documentIds));
     const chunks = await chunkRepository.listByDocumentsOrdered(documentIds);
+    const excerptText = chunks
+        .slice(0, Math.max(count * 4, 24))
+        .map((chunk, index) => `Excerpt ${index + 1} (${chunk.sectionTitle || 'Section'}): ${(chunk.summary || chunk.content || '').replace(/\s+/g, ' ').trim().slice(0, 320)}`)
+        .join('\n\n');
 
-    // Filter concepts to most important ones
+    if (!concepts.length && !excerptText.trim()) {
+        throw new AppError('Quiz cannot be generated because document content is unavailable', 400, 'QUIZ_SOURCE_EMPTY');
+    }
+
     const prioritizedConcepts = [...concepts].sort((a, b) => (b.importance || 0.5) - (a.importance || 0.5));
-    const targetConcepts = prioritizedConcepts.slice(0, Math.max(count * 3, 15));
-
-    let questionsData = [];
+    const targetConcepts = prioritizedConcepts.slice(0, Math.max(count * 3, 18));
     const generationConfig = {
         maxTokens: estimateQuizMaxTokens(count, difficulty)
     };
 
-    try {
-        if (targetConcepts.length > 0) {
-            questionsData = await generateJson(
-                buildQuizFromConceptsPrompt(documents, targetConcepts, count, difficulty),
-                generationConfig
-            );
-        } else {
-        const excerptText = chunks
-            .slice(0, Math.max(count * 4, 24))
-            .map((chunk, index) => `Excerpt ${index + 1} (${chunk.sectionTitle || 'Section'}): ${chunk.content}`)
-            .join('\n\n');
+    let collected = [];
+    let lastError = null;
 
-        if (!excerptText.trim()) {
-            throw new Error('Quiz cannot be generated because document content is still unavailable.');
-        }
-            questionsData = await generateJson(
-                buildQuizFromChunksPrompt(documents, excerptText, count, difficulty),
-                generationConfig
-            );
-        }
-    } catch (error) {
-        questionsData = targetConcepts.length
-            ? fallbackQuizFromConcepts(targetConcepts, count)
-            : fallbackQuizFromChunks(chunks, count);
-    }
-
-    let normalizedQuestions = normalizeQuestions(questionsData, count);
-    if (normalizedQuestions.length < count) {
-        const retryPrompt = `Generate exactly ${count - normalizedQuestions.length} additional unique questions.
-Return JSON array only.
-Avoid repeating any of these existing questions:
-${normalizedQuestions.map((q) => `- ${q.question}`).join('\n')}`;
+    for (let attempt = 1; attempt <= MAX_GENERATION_ATTEMPTS; attempt += 1) {
+        const existingQuestions = collected.map((item) => item.question).slice(0, 24);
         try {
-            const retryQuestions = await generateJson(
-                `${buildQuizFromConceptsPrompt(documents, targetConcepts.length ? targetConcepts : concepts.slice(0, 20), count - normalizedQuestions.length, difficulty)}\n\n${retryPrompt}`,
-                generationConfig
-            );
-            normalizedQuestions = normalizeQuestions([...normalizedQuestions, ...(Array.isArray(retryQuestions) ? retryQuestions : [])], count);
+            const payload = targetConcepts.length
+                ? await generateJson(
+                    buildQuizFromConceptsPrompt(documents, targetConcepts, count, difficulty, existingQuestions),
+                    generationConfig
+                )
+                : await generateJson(
+                    buildQuizFromChunksPrompt(documents, excerptText, count, difficulty, existingQuestions),
+                    generationConfig
+                );
+
+            const normalized = normalizeQuestions(payload, count * 2);
+            collected = dedupeSemantically([...collected, ...normalized]).slice(0, count * 2);
+            if (collected.length >= count) {
+                break;
+            }
         } catch (error) {
-            const fallbackRemainder = (targetConcepts.length
-                ? fallbackQuizFromConcepts(targetConcepts, count)
-                : fallbackQuizFromChunks(chunks, count))
-                .slice(0, count - normalizedQuestions.length);
-            normalizedQuestions = normalizeQuestions([...normalizedQuestions, ...fallbackRemainder], count);
+            lastError = error;
+            logger.warn('[Quiz] Generation attempt failed', {
+                attempt,
+                userId: userId.toString(),
+                reason: error.message
+            });
         }
     }
 
-    if (!normalizedQuestions.length) {
-        throw new Error('Quiz generation failed. Please retry.');
+    if (!collected.length) {
+        throw new AppError('Quiz generation failed', 502, 'QUIZ_GENERATION_FAILED', {
+            requested: count,
+            generated: 0,
+            reason: lastError?.message || 'No quiz items generated'
+        });
     }
 
-    const conceptByName = new Map(targetConcepts.map((concept) => [concept.name.toLowerCase(), concept]));
+    let finalQuestions = enforceConceptVariety(collected, count);
+    finalQuestions = dedupeSemantically(finalQuestions).slice(0, count);
+    finalQuestions = balanceCorrectAnswerPositions(finalQuestions);
+
+    if (finalQuestions.length < count) {
+        throw new AppError('Quiz generation did not meet uniqueness/coverage requirements', 502, 'QUIZ_LOW_QUALITY_OUTPUT', {
+            requested: count,
+            generated: finalQuestions.length
+        });
+    }
+
+    const conceptByName = new Map(concepts.map((concept) => [concept.name.toLowerCase(), concept]));
     let questionEmbeddings = [];
     try {
-        questionEmbeddings = await embedTexts(normalizedQuestions.map((item) => item.question));
+        questionEmbeddings = await embedTexts(finalQuestions.map((item) => item.question));
     } catch (error) {
-        questionEmbeddings = normalizedQuestions.map(() => []);
+        logger.warn('[Quiz] Question embedding generation failed', {
+            reason: error.message,
+            userId: userId.toString()
+        });
+        questionEmbeddings = finalQuestions.map(() => []);
     }
 
     return Quiz.create({
@@ -259,7 +291,7 @@ ${normalizedQuestions.map((q) => `- ${q.question}`).join('\n')}`;
         title: documents.length === 1
             ? `${documents[0].title} - Adaptive Concept Quiz`
             : 'Multi-Document Adaptive Concept Quiz',
-        questions: normalizedQuestions.map((item, index) => ({
+        questions: finalQuestions.map((item, index) => ({
             question: item.question,
             options: item.options,
             correctAnswer: item.correctAnswer,
@@ -268,7 +300,7 @@ ${normalizedQuestions.map((q) => `- ${q.question}`).join('\n')}`;
                 .map((name) => conceptByName.get(name.toLowerCase())?._id)
                 .filter(Boolean),
             conceptEmbedding: questionEmbeddings[index] || [],
-            citations: [] // Citations omitted as questions are directly mapped to pure conceptual ideas now
+            citations: []
         }))
     });
 };

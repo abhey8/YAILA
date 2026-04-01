@@ -1,9 +1,17 @@
 import multer from 'multer';
+import fs from 'fs';
 import path from 'path';
+import { fileURLToPath } from 'url';
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+const uploadsDir = path.resolve(__dirname, '..', 'uploads');
+
+fs.mkdirSync(uploadsDir, { recursive: true });
 
 const storage = multer.diskStorage({
     destination: function (req, file, cb) {
-        cb(null, path.resolve(process.cwd(), 'uploads'));
+        cb(null, uploadsDir);
     },
     filename: function (req, file, cb) {
         cb(null, `${Date.now()}-${file.originalname}`);
@@ -27,7 +35,7 @@ export const upload = multer({
 
 const imageStorage = multer.diskStorage({
     destination: function (req, file, cb) {
-        cb(null, path.resolve(process.cwd(), 'uploads'));
+        cb(null, uploadsDir);
     },
     filename: function (req, file, cb) {
         cb(null, `profile-${Date.now()}-${file.originalname}`);

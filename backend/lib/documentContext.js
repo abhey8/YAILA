@@ -1,17 +1,20 @@
+import { filterStudyWorthChunks } from './studyContent.js';
+
 export const sampleChunksForPrompt = (chunks, maxChunks = 12) => {
-    if (!chunks.length || maxChunks <= 0) {
+    const filteredChunks = filterStudyWorthChunks(chunks);
+    if (!filteredChunks.length || maxChunks <= 0) {
         return [];
     }
 
-    if (chunks.length <= maxChunks) {
-        return chunks;
+    if (filteredChunks.length <= maxChunks) {
+        return filteredChunks;
     }
 
     // Filter out likely intro chunks from the start of the list before sampling
     let startOffset = 0;
-    while (startOffset < Math.min(chunks.length, 6)) {
-        const section = (chunks[startOffset].sectionTitle || '').toUpperCase();
-        const content = (chunks[startOffset].content || '').toUpperCase();
+    while (startOffset < Math.min(filteredChunks.length, 6)) {
+        const section = (filteredChunks[startOffset].sectionTitle || '').toUpperCase();
+        const content = (filteredChunks[startOffset].content || '').toUpperCase();
         const isIntro = section.includes('PREFACE') || 
                         section.includes('ACKNOWLEDGMENT') || 
                         section.includes('DEDICATION') ||
@@ -25,7 +28,7 @@ export const sampleChunksForPrompt = (chunks, maxChunks = 12) => {
         }
     }
 
-    const pool = startOffset > 0 ? chunks.slice(startOffset) : chunks;
+    const pool = startOffset > 0 ? filteredChunks.slice(startOffset) : filteredChunks;
     const sampled = [];
     const usedIndexes = new Set();
 

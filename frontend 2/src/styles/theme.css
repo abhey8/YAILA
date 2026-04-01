@@ -310,6 +310,11 @@
   }
 
   .study-button-primary {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.5rem;
+    min-height: 2.75rem;
     background: var(--accent-gradient);
     color: #fffdf8;
     box-shadow: 0 14px 30px color-mix(in srgb, var(--accent-primary) 16%, transparent);
@@ -333,20 +338,32 @@
   }
 
   .study-button-secondary {
-    background: var(--surface-2);
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.5rem;
+    min-height: 2.75rem;
+    background: color-mix(in srgb, var(--surface-3) 82%, var(--surface-2));
     color: var(--foreground);
-    border: 1px solid var(--border);
-    transition: background-color 180ms ease, border-color 180ms ease, color 180ms ease;
+    border: 1px solid color-mix(in srgb, var(--border) 72%, var(--foreground-soft) 28%);
+    box-shadow:
+      inset 0 1px 0 color-mix(in srgb, white 10%, transparent),
+      0 10px 20px color-mix(in srgb, black 8%, transparent);
+    transition: background-color 180ms ease, border-color 180ms ease, color 180ms ease, box-shadow 180ms ease;
   }
 
   .study-button-secondary:hover {
-    background: color-mix(in srgb, var(--surface-2) 84%, var(--hover-tint));
-    border-color: color-mix(in srgb, var(--border) 68%, var(--accent-primary) 32%);
+    background: color-mix(in srgb, var(--surface-3) 72%, var(--hover-tint));
+    border-color: color-mix(in srgb, var(--border) 54%, var(--accent-primary) 46%);
+    box-shadow:
+      inset 0 1px 0 color-mix(in srgb, white 10%, transparent),
+      0 12px 26px color-mix(in srgb, var(--accent-primary) 12%, transparent);
   }
 
   .study-button-secondary:disabled {
     background: var(--disabled-bg);
     color: var(--disabled-text);
+    box-shadow: none;
   }
 
   .study-chip {
@@ -361,6 +378,39 @@
 
   .study-prose {
     color: var(--foreground-soft);
+  }
+
+  .study-progress-track {
+    background: color-mix(in srgb, var(--surface-3) 82%, var(--secondary));
+  }
+
+  .study-progress-fill {
+    background: var(--accent-gradient);
+  }
+
+  .study-status-panel {
+    border: 1px solid var(--border);
+    background: color-mix(in srgb, var(--surface-1) 84%, var(--surface-2));
+  }
+
+  .study-status-panel-info {
+    background: color-mix(in srgb, var(--info-surface) 80%, var(--surface-1));
+    border: 1px solid color-mix(in srgb, var(--info) 20%, var(--border));
+  }
+
+  .study-status-panel-success {
+    background: color-mix(in srgb, var(--success-surface) 82%, var(--surface-1));
+    border: 1px solid color-mix(in srgb, var(--success) 20%, var(--border));
+  }
+
+  .study-status-panel-weak {
+    background: color-mix(in srgb, var(--weak-surface) 82%, var(--surface-1));
+    border: 1px solid color-mix(in srgb, var(--weak) 20%, var(--border));
+  }
+
+  .study-skeleton {
+    background: color-mix(in srgb, var(--surface-2) 76%, var(--surface-3));
+    border: 1px solid var(--border);
   }
 
   .status-success {

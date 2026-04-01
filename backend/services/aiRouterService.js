@@ -28,13 +28,10 @@ export const detectComplexity = (prompt, historyLength = 0) => {
  * Decides the correct model to route the AI response through, handling fallbacks securely.
  */
 export const routeAIRequest = (prompt, history = []) => {
-    const provider = env.aiProvider === 'gemini'
-        || (env.aiProvider === 'auto' && env.geminiApiKey)
-        ? 'gemini'
-        : 'openrouter';
-    const configuredModel = provider === 'gemini'
-        ? (env.geminiChatModel || 'gemini-2.5-flash')
-        : (env.openrouterModel || 'anthropic/claude-3.5-sonnet');
+    const provider = env.aiPrimaryProvider || 'gemini';
+    const configuredModel = provider === 'groq'
+        ? (env.groqChatModel || 'llama-3.1-8b-instant')
+        : (env.geminiChatModel || 'gemini-2.5-flash');
     if (!env.aiRoutingEnabled) {
         return configuredModel;
     }

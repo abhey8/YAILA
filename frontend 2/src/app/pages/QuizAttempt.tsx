@@ -92,8 +92,8 @@ export default function QuizAttempt() {
   if (loading) {
     return (
       <div className="max-w-4xl mx-auto flex flex-col items-center justify-center p-20 space-y-4">
-         <Loader2 className="w-8 h-8 text-indigo-600 animate-spin" />
-         <p className="text-gray-600 dark:text-gray-400">Loading your quiz questions...</p>
+         <Loader2 className="w-8 h-8 text-[var(--accent-primary)] animate-spin" />
+         <p className="text-[var(--foreground-soft)]">Loading your quiz questions...</p>
       </div>
     );
   }
@@ -101,8 +101,8 @@ export default function QuizAttempt() {
   if (questions.length === 0) {
     return (
       <div className="max-w-4xl mx-auto flex flex-col items-center justify-center p-20 space-y-4">
-         <p className="text-gray-600 dark:text-gray-400">No questions found for this quiz.</p>
-         <button onClick={() => navigate(-1)} className="text-indigo-600 hover:text-indigo-700">Go Back</button>
+         <p className="text-[var(--foreground-soft)]">No questions found for this quiz.</p>
+         <button onClick={() => navigate(-1)} className="text-[var(--accent-primary)] hover:text-[var(--accent-secondary)] transition-colors">Go Back</button>
       </div>
     );
   }
@@ -112,17 +112,17 @@ export default function QuizAttempt() {
       <div>
         <button
           onClick={() => navigate(-1)}
-          className="flex items-center gap-2 text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white mb-4"
+          className="flex items-center gap-2 text-[var(--foreground-soft)] hover:text-[var(--foreground)] mb-4 transition-colors"
         >
           <ArrowLeft className="w-5 h-5" />
           Exit Quiz
         </button>
 
-        <h1 className="text-2xl font-bold text-gray-900 dark:text-white mb-4">Document Quiz</h1>
+        <h1 className="text-2xl font-bold text-[var(--foreground)] mb-4">Document Quiz</h1>
 
-        <div className="bg-gray-200 dark:bg-gray-700 rounded-full h-2 mb-4">
+        <div className="study-progress-track rounded-full h-2 mb-4">
           <motion.div
-            className="bg-indigo-600 dark:bg-indigo-500 h-2 rounded-full"
+            className="study-progress-fill h-2 rounded-full"
             initial={{ width: 0 }}
             animate={{ width: `${progress}%` }}
             transition={{ duration: 0.3 }}
@@ -130,17 +130,17 @@ export default function QuizAttempt() {
         </div>
 
         <div className="flex items-center justify-between text-sm">
-          <div className="text-gray-600 dark:text-gray-400">
+          <div className="text-[var(--foreground-soft)]">
             Question {currentQuestion + 1} of {questions.length}
           </div>
           <div className="flex items-center gap-6">
-            <div className="flex items-center gap-2 text-gray-600 dark:text-gray-400">
+            <div className="flex items-center gap-2 text-[var(--foreground-soft)]">
               <Clock className="w-4 h-4" />
-              <span className={timeLeft < 60 ? "text-red-500 font-bold" : ""}>
+              <span className={timeLeft < 60 ? "text-[var(--weak)] font-bold" : ""}>
                 {formatTime(timeLeft)}
               </span>
             </div>
-            <div className="text-gray-600 dark:text-gray-400">
+            <div className="text-[var(--foreground-soft)]">
               {answers.filter(a => a !== undefined).length}/{questions.length} answered
             </div>
           </div>
@@ -158,7 +158,7 @@ export default function QuizAttempt() {
         <button
           onClick={handlePrevious}
           disabled={currentQuestion === 0}
-          className="px-6 py-3 bg-[var(--surface)] border border-[var(--border)] text-[var(--foreground)] rounded-lg font-medium hover:bg-[var(--secondary)] disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+          className="px-6 py-3 rounded-lg font-medium study-button-secondary disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
         >
           Previous
         </button>
@@ -166,7 +166,7 @@ export default function QuizAttempt() {
         <div className="flex gap-3">
           <button
             onClick={handleSubmit}
-            className="flex items-center gap-2 px-6 py-3 bg-green-600 hover:bg-green-700 text-white rounded-lg font-medium transition-colors"
+            className="flex items-center gap-2 px-6 py-3 rounded-lg font-medium transition-colors text-[var(--primary-foreground)] bg-[var(--success)] hover:brightness-110"
           >
             <Flag className="w-5 h-5" />
             Submit Quiz
@@ -175,7 +175,7 @@ export default function QuizAttempt() {
           {currentQuestion < questions.length - 1 && (
             <button
               onClick={handleNext}
-              className="px-6 py-3 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg font-medium transition-colors"
+              className="px-6 py-3 rounded-lg font-medium study-button-primary"
             >
               Next
             </button>

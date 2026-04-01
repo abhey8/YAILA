@@ -7,7 +7,7 @@ export const masteryRepository = {
     upsert: (userId, documentId, conceptId, update) => ConceptMastery.findOneAndUpdate(
         { user: userId, document: documentId, concept: conceptId },
         update,
-        { new: true, upsert: true }
+        { returnDocument: 'after', upsert: true }
     ),
     listWeakConcepts: (userId, documentId, threshold = 0.55) => ConceptMastery.find({
         user: userId,

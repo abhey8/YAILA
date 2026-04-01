@@ -6,6 +6,15 @@ import { FlashcardComponent } from "../components/FlashcardComponent";
 import { toast } from "sonner";
 import { aiApi, documentApi, flashcardApi, quizApi } from "../../services/api";
 
+function cleanSummaryLine(line: string) {
+  return line
+    .replace(/\*\*(.*?)\*\*/g, "$1")
+    .replace(/__(.*?)__/g, "$1")
+    .replace(/\*(.*?)\*/g, "$1")
+    .replace(/`(.*?)`/g, "$1")
+    .trim();
+}
+
 function renderReadableSummary(text: string) {
   const lines = text
     .split("\n")
@@ -13,39 +22,41 @@ function renderReadableSummary(text: string) {
     .filter((line) => line.length > 0);
 
   return (
-    <div className="space-y-3">
+    <div className="space-y-4">
       {lines.map((line, index) => {
-        const heading = line.match(/^#{1,6}\s+(.*)$/);
+        const normalizedLine = cleanSummaryLine(line);
+        const heading = normalizedLine.match(/^#{1,6}\s+(.*)$/);
         if (heading) {
           return (
-            <h4 key={index} className="text-[var(--foreground)] font-semibold mt-4 first:mt-0">
+            <h4 key={index} className="text-[var(--foreground)] font-semibold text-lg mt-5 first:mt-0">
               {heading[1].trim()}
             </h4>
           );
         }
 
-        const bullet = line.match(/^[-*]\s+(.*)$/);
+        const bullet = normalizedLine.match(/^[-*]\s+(.*)$/);
         if (bullet) {
           return (
-            <div key={index} className="flex items-start gap-2 text-[var(--foreground-soft)]">
+            <div key={index} className="flex items-start gap-3 text-[var(--foreground-soft)] leading-7">
               <span className="mt-1 text-[var(--accent-primary)]">•</span>
               <span>{bullet[1].trim()}</span>
             </div>
           );
         }
 
-        const numbered = line.match(/^\d+\.\s+(.*)$/);
+        const numbered = normalizedLine.match(/^(\d+)\.\s+(.*)$/);
         if (numbered) {
           return (
-            <div key={index} className="text-[var(--foreground-soft)]">
-              {line}
+            <div key={index} className="flex items-start gap-3 leading-7">
+              <span className="min-w-6 font-semibold text-[var(--foreground)]">{numbered[1]}.</span>
+              <span className="text-[var(--foreground-soft)]">{numbered[2].trim()}</span>
             </div>
           );
         }
 
         return (
-          <p key={index} className="text-[var(--foreground-soft)] leading-7">
-            {line.replace(/\*\*/g, "").replace(/\*/g, "")}
+          <p key={index} className="text-[var(--foreground-soft)] leading-8">
+            {normalizedLine}
           </p>
         );
       })}
@@ -325,7 +336,7 @@ export default function DocumentDetail() {
         toast.success(append ? "More flashcards generated" : "Flashcards generated from this document");
       })
       .catch((error) => {
-        toast.error("Failed to generate flashcards");
+        toast.error(error?.response?.data?.message || "Failed to generate flashcards");
       })
       .finally(() => {
         setIsGeneratingFlashcards(false);
@@ -398,7 +409,7 @@ export default function DocumentDetail() {
       });
       navigate(`/quiz/${quiz._id}`);
     } catch (err) {
-       toast.error("Failed to generate quiz. Please try again.");
+       toast.error((err as any)?.response?.data?.message || "Failed to generate quiz. Please try again.");
     } finally {
       setIsGenerating(false);
     }
@@ -536,11 +547,11 @@ export default function DocumentDetail() {
                   ) : (
                     <p className="text-[var(--muted-foreground)]">Topic summary is not ready yet.</p>
                   )}
-                  <div className="mt-4 flex flex-wrap gap-3">
+                  <div className="mt-5 flex flex-wrap gap-3 border-t border-[var(--glass-border)] pt-4">
                     <button
                       onClick={handleGenerateTopicSummary}
                       disabled={isGeneratingTopicExplanation || !isDocumentReady}
-                      className="px-4 py-2 rounded-lg study-button-primary"
+                      className="px-4 py-2 rounded-lg study-button-secondary"
                     >
                       {isGeneratingTopicExplanation ? "Generating..." : "Dive Deeper"}
                     </button>
@@ -559,7 +570,7 @@ export default function DocumentDetail() {
                         setActiveTab("quiz");
                         updateTabQuery("quiz");
                       }}
-                      className="px-4 py-2 rounded-lg study-button-primary"
+                      className="px-4 py-2 rounded-lg study-button-secondary"
                     >
                       Move to Quiz
                     </button>
@@ -612,15 +623,15 @@ export default function DocumentDetail() {
                       }}
                       className="px-4 py-2 rounded-lg study-button-secondary"
                     >
-                      Move Back to Summary
+                      Back to Summary
                     </button>
                   ) : null}
                   <button
                     onClick={() => handleGenerateFlashcards(true)}
                     disabled={isGeneratingFlashcards || !isDocumentReady}
-                    className="px-4 py-2 rounded-lg study-button-primary"
+                    className="px-4 py-2 rounded-lg study-button-secondary"
                   >
-                    {isGeneratingFlashcards ? "Generating..." : "Generate More"}
+                    {isGeneratingFlashcards ? "Generating..." : "Add More Cards"}
                   </button>
                   <button
                     onClick={() => {
@@ -636,7 +647,7 @@ export default function DocumentDetail() {
                     disabled={isGeneratingFlashcards || !isDocumentReady}
                     className="px-4 py-2 rounded-lg study-button-secondary"
                   >
-                    {isGeneratingFlashcards ? "Generating..." : flashcards.length ? "Regenerate Set" : "Generate"}
+                    {isGeneratingFlashcards ? "Generating..." : flashcards.length ? "Replace Set" : "Generate Cards"}
                   </button>
                 </div>
               </div>

@@ -1,39 +1,25 @@
 import { env } from '../config/env.js';
 import { AppError } from '../lib/errors.js';
-import { slugify } from '../lib/text.js';
 import { conceptRepository } from '../repositories/conceptRepository.js';
-import { chunkRepository } from '../repositories/chunkRepository.js';
+import { documentRepository } from '../repositories/documentRepository.js';
 import { masteryRepository } from '../repositories/masteryRepository.js';
 import { progressRepository } from '../repositories/progressRepository.js';
 import { roadmapRepository } from '../repositories/roadmapRepository.js';
 import { createNotification } from './notificationService.js';
 import { trackActivity } from './activityService.js';
+import { rebuildKnowledgeGraph } from './knowledgeGraphService.js';
+import { logger } from '../lib/logger.js';
+import { filterStudyWorthConcepts } from '../lib/studyContent.js';
 
-const buildFallbackConceptsFromChunks = (chunks, userId, documentId) => {
-    const seen = new Set();
-    const concepts = [];
-    for (const chunk of chunks) {
-        if (concepts.length >= 12) break;
-        const rawName = (chunk.sectionTitle || chunk.keywords?.[0] || '').trim();
-        const slug = slugify(rawName);
-        if (!rawName || !slug || seen.has(slug)) continue;
-        seen.add(slug);
-        concepts.push({
-            document: documentId,
-            user: userId,
-            name: rawName.slice(0, 80),
-            slug,
-            description: (chunk.summary || chunk.content || '').replace(/\s+/g, ' ').trim().slice(0, 220),
-            keywords: Array.isArray(chunk.keywords) ? chunk.keywords.slice(0, 8) : [],
-            difficulty: 0.5,
-            embedding: [],
-            importance: 0.5,
-            chunkRefs: [chunk._id],
-            prerequisiteConcepts: [],
-            relatedConcepts: []
-        });
+const hasWeakConcepts = (concepts = []) => {
+    if (!concepts.length) {
+        return true;
     }
-    return concepts;
+    if (concepts.length < 4) {
+        return true;
+    }
+    const weakDescriptions = concepts.filter((concept) => (concept.description || '').trim().length < 32).length;
+    return weakDescriptions / concepts.length > 0.45;
 };
 
 const topologicalPlan = (concepts) => {
@@ -60,31 +46,78 @@ const topologicalPlan = (concepts) => {
     return order;
 };
 
-export const generateRoadmap = async (userId, documentId, reason = 'manual-refresh') => {
-    let [concepts, masteries, progress] = await Promise.all([
-        conceptRepository.listByDocument(documentId),
-        masteryRepository.findByUserAndDocument(userId, documentId),
-        progressRepository.getOrCreate(userId)
-    ]);
+const buildDependencyDepthIndex = (concepts) => {
+    const byId = new Map(concepts.map((concept) => [concept._id.toString(), concept]));
+    const memo = new Map();
 
-    if (!concepts.length) {
-        const chunks = await chunkRepository.listByDocument(documentId);
-        const fallbackConcepts = buildFallbackConceptsFromChunks(chunks, userId, documentId);
-        if (fallbackConcepts.length) {
-            await conceptRepository.createMany(fallbackConcepts);
-            concepts = await conceptRepository.listByDocument(documentId);
+    const resolveDepth = (concept) => {
+        const key = concept._id.toString();
+        if (memo.has(key)) {
+            return memo.get(key);
+        }
+
+        const depth = concept.prerequisiteConcepts.reduce((maxDepth, prereqId) => {
+            const prereq = byId.get(prereqId.toString());
+            if (!prereq) {
+                return maxDepth;
+            }
+            return Math.max(maxDepth, resolveDepth(prereq) + 1);
+        }, 0);
+
+        memo.set(key, depth);
+        return depth;
+    };
+
+    concepts.forEach(resolveDepth);
+    return memo;
+};
+
+export const generateRoadmap = async (userId, documentId, reason = 'manual-refresh') => {
+    let concepts = filterStudyWorthConcepts(await conceptRepository.listByDocument(documentId));
+    if (hasWeakConcepts(concepts)) {
+        const document = await documentRepository.findById(documentId);
+        if (!document) {
+            throw new AppError('Document not found for roadmap generation', 404, 'DOCUMENT_NOT_FOUND');
+        }
+        try {
+            await rebuildKnowledgeGraph(document);
+            concepts = filterStudyWorthConcepts(await conceptRepository.listByDocument(documentId));
+        } catch (error) {
+            logger.warn('[Roadmap] Knowledge graph regeneration failed', {
+                userId: userId.toString(),
+                documentId: documentId.toString(),
+                error: error.message
+            });
+            throw new AppError('Concept graph generation failed for roadmap', 502, 'ROADMAP_GRAPH_REGEN_FAILED', {
+                stage: 'knowledge-graph',
+                reason: error.message
+            });
         }
     }
 
     if (!concepts.length) {
-        throw new AppError('No concepts available for this document yet', 400, 'GRAPH_NOT_READY');
+        throw new AppError('No concepts available for this document yet', 409, 'GRAPH_NOT_READY', {
+            stage: 'knowledge-graph'
+        });
     }
 
-    const masteryByConcept = new Map(masteries.map((mastery) => [mastery.concept._id.toString(), mastery]));
+    const [masteries, progress] = await Promise.all([
+        masteryRepository.findByUserAndDocument(userId, documentId),
+        progressRepository.getOrCreate(userId)
+    ]);
+
+    const masteryByConcept = new Map(
+        masteries
+            .filter((mastery) => mastery?.concept?._id)
+            .map((mastery) => [mastery.concept._id.toString(), mastery])
+    );
     const documentProgress = progress.documents.find((entry) => entry.document.toString() === documentId.toString());
     const topicProgress = documentProgress?.topicProgress || [];
+    const topologicalOrder = topologicalPlan(concepts);
+    const topologicalIndex = new Map(topologicalOrder.map((concept, index) => [concept._id.toString(), index]));
+    const depthIndex = buildDependencyDepthIndex(concepts);
 
-    const ordered = topologicalPlan(concepts)
+    const ordered = concepts
         .map((concept) => {
             const mastery = masteryByConcept.get(concept._id.toString());
             const metrics = topicProgress.find((entry) => entry.concept.toString() === concept._id.toString());
@@ -95,10 +128,20 @@ export const generateRoadmap = async (userId, documentId, reason = 'manual-refre
 
             return {
                 concept,
-                priority
+                priority,
+                depth: depthIndex.get(concept._id.toString()) || 0,
+                topoOrder: topologicalIndex.get(concept._id.toString()) || 0
             };
         })
-        .sort((left, right) => right.priority - left.priority)
+        .sort((left, right) => {
+            if (left.depth !== right.depth) {
+                return left.depth - right.depth;
+            }
+            if (Math.abs(right.priority - left.priority) > 0.08) {
+                return right.priority - left.priority;
+            }
+            return left.topoOrder - right.topoOrder;
+        })
         .slice(0, 10);
 
     const roadmap = await roadmapRepository.create({
