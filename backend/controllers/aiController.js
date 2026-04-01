@@ -17,8 +17,15 @@ const isSummaryTooShort = (text = '') => {
 };
 
 const cleanSummaryFormatting = (text = '') => text
+    .replace(/\r/g, '')
     .replace(/^#{1,6}\s*/gm, '')
-    .replace(/^\*\s+/gm, '- ')
+    .replace(/\*\*(.*?)\*\*/g, '$1')
+    .replace(/__(.*?)__/g, '$1')
+    .replace(/`([^`]+)`/g, '$1')
+    .replace(/^\s*[\t ]*\+\s+/gm, '- ')
+    .replace(/^\s*[*•]\s+/gm, '- ')
+    .replace(/\t+/g, '  ')
+    .replace(/[ ]{3,}/g, '  ')
     .replace(/\n{3,}/g, '\n\n')
     .trim();
 
@@ -107,6 +114,7 @@ Requirements:
 - Keep the output detailed and study-ready (not just 1-2 lines).
 - For each section, provide at least 2-3 meaningful bullet points.
 - Include concrete terms, methods, and examples where available.
+- Output clean plain text only. Do not use Markdown symbols like **, #, or + bullets.
 
 Section Summaries:
 ${summarySource}`, { maxTokens: 700 });
@@ -120,6 +128,7 @@ Keep sections exactly:
 3. Key Ideas and Definitions
 4. Important Methods, Proofs, or Examples
 5. What to Revise First
+Use clean plain text only. Do not use Markdown symbols like **, #, or + bullets.
 
 Current summary:
 ${summary}
