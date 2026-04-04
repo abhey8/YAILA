@@ -1,4 +1,5 @@
 import User from '../models/User.js';
+import crypto from 'crypto';
 import jwt from 'jsonwebtoken';
 import bcrypt from 'bcryptjs';
 import { env } from '../config/env.js';
@@ -36,6 +37,7 @@ export const registerUser = asyncHandler(async (req, res) => {
         _id: user._id,
         name: user.name,
         email: user.email,
+        isGuest: user.isGuest,
         age: user.age,
         studySpecifications: user.studySpecifications,
         profilePic: user.profilePic,
@@ -55,6 +57,33 @@ export const loginUser = asyncHandler(async (req, res) => {
         _id: user._id,
         name: user.name,
         email: user.email,
+        isGuest: user.isGuest,
+        age: user.age,
+        studySpecifications: user.studySpecifications,
+        profilePic: user.profilePic,
+        token: generateToken(user._id)
+    });
+});
+
+export const guestLogin = asyncHandler(async (req, res) => {
+    const nonce = `${Date.now()}-${crypto.randomBytes(4).toString('hex')}`;
+    const guestEmail = `guest+${nonce}@yaila.local`;
+    const guestPassword = crypto.randomBytes(18).toString('hex');
+    const salt = await bcrypt.genSalt(10);
+    const hashedPassword = await bcrypt.hash(guestPassword, salt);
+
+    const user = await User.create({
+        name: `Guest ${nonce.slice(-4)}`,
+        email: guestEmail,
+        password: hashedPassword,
+        isGuest: true
+    });
+
+    res.status(201).json({
+        _id: user._id,
+        name: user.name,
+        email: user.email,
+        isGuest: user.isGuest,
         age: user.age,
         studySpecifications: user.studySpecifications,
         profilePic: user.profilePic,
@@ -72,6 +101,7 @@ export const getUserProfile = asyncHandler(async (req, res) => {
         _id: user._id, 
         name: user.name, 
         email: user.email,
+        isGuest: user.isGuest,
         age: user.age,
         studySpecifications: user.studySpecifications,
         profilePic: user.profilePic
@@ -130,6 +160,7 @@ export const updateUserProfile = asyncHandler(async (req, res) => {
         _id: updatedUser._id,
         name: updatedUser.name,
         email: updatedUser.email,
+        isGuest: updatedUser.isGuest,
         age: updatedUser.age,
         studySpecifications: updatedUser.studySpecifications,
         profilePic: updatedUser.profilePic
@@ -155,6 +186,7 @@ export const uploadProfilePhoto = asyncHandler(async (req, res) => {
         _id: updatedUser._id,
         name: updatedUser.name,
         email: updatedUser.email,
+        isGuest: updatedUser.isGuest,
         age: updatedUser.age,
         studySpecifications: updatedUser.studySpecifications,
         profilePic: updatedUser.profilePic

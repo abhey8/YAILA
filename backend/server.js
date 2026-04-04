@@ -10,6 +10,7 @@ import { logger } from './lib/logger.js';
 import { errorHandler, notFound } from './middleware/errorMiddleware.js';
 import { startRoadmapRegenerationJob } from './jobs/roadmapRegenerationJob.js';
 import { resumeIncompleteIngestion } from './services/documentProcessingService.js';
+import { resumePendingSummaries } from './services/summaryService.js';
 import authRoutes from './routes/authRoutes.js';
 import documentRoutes from './routes/documentRoutes.js';
 import aiRoutes from './routes/aiRoutes.js';
@@ -94,6 +95,9 @@ const connectDB = async () => {
         if (env.resumeIngestionOnBoot) {
             resumeIncompleteIngestion().catch((error) => {
                 logger.error('Failed to resume pending document ingestion', { error: error.message });
+            });
+            resumePendingSummaries().catch((error) => {
+                logger.error('Failed to resume pending summaries', { error: error.message });
             });
         }
     } catch (error) {

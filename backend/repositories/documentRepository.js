@@ -12,6 +12,16 @@ export const documentRepository = {
         Document.find({ user: userId, _id: { $in: documentIds } }).select(documentSummaryProjection),
     listOwnedDocuments: (userId) =>
         Document.find({ user: userId }).select(documentSummaryProjection).sort('-createdAt'),
+    listDocumentsNeedingSummary: () =>
+        Document.find({
+            ingestionStatus: 'completed',
+            $or: [
+                { summaryStatus: { $in: ['idle', 'generating', 'failed'] } },
+                { summary: { $exists: false } },
+                { summary: '' },
+                { summary: null }
+            ]
+        }).select(documentSummaryProjection),
     create: (payload) => Document.create(payload),
     save: (document) => document.save(),
     deleteChunksForDocument: (documentId) => DocumentChunk.deleteMany({ document: documentId }),

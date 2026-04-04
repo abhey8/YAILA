@@ -10,9 +10,9 @@ import Roadmap from '../models/Roadmap.js';
 import { asyncHandler } from '../lib/asyncHandler.js';
 import { AppError } from '../lib/errors.js';
 import { documentRepository } from '../repositories/documentRepository.js';
+import { documentIngestionCheckpointRepository } from '../repositories/documentIngestionCheckpointRepository.js';
 import { trackActivity } from '../services/activityService.js';
-import { scheduleDocumentIngestion } from '../services/documentProcessingService.js';
-import { extractTextFromPDF } from '../utils/pdfParser.js';
+import { getVectorStore } from '../services/vectorStores/vectorStoreFactory.js';
 
 export const uploadDocument = asyncHandler(async (req, res) => {
     if (!req.file) {
@@ -40,9 +40,14 @@ export const uploadDocument = asyncHandler(async (req, res) => {
             ingestionProgress: {
                 stage: 'queued',
                 progressPercent: 0,
+                totalPages: 0,
+                processedPages: 0,
+                currentPage: 0,
                 totalChunks: 0,
                 processedChunks: 0,
                 embeddedChunks: 0,
+                indexedChunks: 0,
+                resumeCount: 0,
                 startedAt: null,
                 completedAt: null
             }
@@ -94,13 +99,16 @@ export const deleteDocument = asyncHandler(async (req, res) => {
     if (!document) {
         throw new AppError('Document not found', 404, 'DOCUMENT_NOT_FOUND');
     }
+    const vectorStore = getVectorStore();
 
     if (fs.existsSync(document.path)) {
         fs.unlinkSync(document.path);
     }
 
-    await documentRepository.deleteChunksForDocument(document._id);
     await Promise.all([
+        documentRepository.deleteChunksForDocument(document._id),
+        documentIngestionCheckpointRepository.deleteByDocument(document._id),
+        vectorStore.deleteDocumentVectors({ documentId: document._id, userId: req.user._id }),
         ChatHistory.deleteMany({ document: document._id }),
         Concept.deleteMany({ document: document._id }),
         ConceptMastery.deleteMany({ document: document._id }),

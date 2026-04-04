@@ -243,7 +243,9 @@ const buildFallbackGraphFromChunks = (chunks = []) => {
 };
 
 export const rebuildKnowledgeGraph = async (document) => {
-    const allChunks = await chunkRepository.listByDocument(document._id);
+    const allChunks = document.chunkCount > 80
+        ? await chunkRepository.sampleByDocument(document._id, 72)
+        : await chunkRepository.listByDocument(document._id);
     const chunks = sampleChunksForPrompt(filterStudyWorthChunks(allChunks), MAX_PROMPT_CHUNKS);
     const nodeLimit = resolveNodeLimit(chunks);
     if (!chunks.length) {

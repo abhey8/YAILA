@@ -2,6 +2,7 @@ import multer from 'multer';
 import fs from 'fs';
 import path from 'path';
 import { fileURLToPath } from 'url';
+import { env } from '../config/env.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -30,7 +31,7 @@ const fileFilter = (req, file, cb) => {
 export const upload = multer({
     storage: storage,
     fileFilter: fileFilter,
-    limits: { fileSize: 5 * 1024 * 1024 } // 5MB limit
+    limits: { fileSize: env.documentUploadMaxMb * 1024 * 1024 }
 });
 
 const imageStorage = multer.diskStorage({

@@ -2,6 +2,7 @@ import express from 'express';
 import {
     summarizeDocument,
     explainText,
+    retrieveContext,
     chatDocument,
     chatDocumentCollection,
     getChatHistory,
@@ -15,6 +16,7 @@ const router = express.Router();
 router.get('/document/:id/summary', protect, summarizeDocument);
 router.get('/document/:id/confusion', protect, getConfusionSignals);
 router.post('/explain', protect, explainText);
+router.post('/retrieve', protect, retrieveContext);
 router.post('/chat/collection', protect, chatDocumentCollection);
 router.get('/chat/collection', protect, getCollectionChatHistory);
 router.route('/chat/:id')

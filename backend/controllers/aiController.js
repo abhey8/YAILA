@@ -7,66 +7,8 @@ import { conceptRepository } from '../repositories/conceptRepository.js';
 import { generateText } from '../services/aiService.js';
 import { chatWithDocuments } from '../services/chatService.js';
 import { predictConfusion } from '../services/confusionService.js';
-import { filterStudyWorthChunks } from '../lib/studyContent.js';
-
-const isSummaryTooShort = (text = '') => {
-    const words = text.trim().split(/\s+/).filter(Boolean).length;
-    const lines = text.split('\n').map((line) => line.trim()).filter(Boolean).length;
-    const bullets = (text.match(/^[-*]\s+/gm) || []).length;
-    return words < 120 || lines < 8 || bullets < 6;
-};
-
-const cleanSummaryFormatting = (text = '') => text
-    .replace(/\r/g, '')
-    .replace(/^#{1,6}\s*/gm, '')
-    .replace(/\*\*(.*?)\*\*/g, '$1')
-    .replace(/__(.*?)__/g, '$1')
-    .replace(/`([^`]+)`/g, '$1')
-    .replace(/^\s*[\t ]*\+\s+/gm, '- ')
-    .replace(/^\s*[*•]\s+/gm, '- ')
-    .replace(/\t+/g, '  ')
-    .replace(/[ ]{3,}/g, '  ')
-    .replace(/\n{3,}/g, '\n\n')
-    .trim();
-
-const buildStructuredSummaryFallback = (document, chunks) => {
-    const safeChunks = filterStudyWorthChunks(chunks).slice(0, 24);
-    const sectionTitles = [...new Set(
-        safeChunks
-            .map((chunk) => `${chunk.sectionTitle || ''}`.trim())
-            .filter((title) => title && title.toLowerCase() !== 'untitled section')
-    )].slice(0, 6);
-    const keywords = [...new Set(
-        safeChunks.flatMap((chunk) => Array.isArray(chunk.keywords) ? chunk.keywords : [])
-    )].slice(0, 10);
-    const methodChunks = safeChunks
-        .filter((chunk) => /(proof|theorem|example|method|algorithm|rule|law)/i.test(`${chunk.sectionTitle || ''} ${chunk.summary || chunk.content || ''}`))
-        .slice(0, 4);
-    const overviewChunks = safeChunks.slice(0, 3);
-    const reviseChunks = safeChunks
-        .slice(0, 5)
-        .sort((left, right) => (right.tokenCount || 0) - (left.tokenCount || 0))
-        .slice(0, 3);
-
-    const lines = [
-        'Overview:',
-        ...overviewChunks.map((chunk) => `- ${(chunk.summary || chunk.content || '').replace(/\s+/g, ' ').trim().slice(0, 220)}`),
-        '',
-        'Main Topics:',
-        ...(sectionTitles.length ? sectionTitles.map((title) => `- ${title}`) : ['- Key sections are still being identified from the document content.']),
-        '',
-        'Key Ideas and Definitions:',
-        ...(keywords.length ? keywords.map((keyword) => `- ${keyword}`) : overviewChunks.map((chunk) => `- ${(chunk.summary || '').slice(0, 120)}`)),
-        '',
-        'Important Methods, Proofs, or Examples:',
-        ...(methodChunks.length ? methodChunks.map((chunk) => `- ${(chunk.summary || chunk.content || '').replace(/\s+/g, ' ').trim().slice(0, 220)}`) : ['- No explicit method/proof/example section was confidently extracted from the current chunks.']),
-        '',
-        'What to Revise First:',
-        ...(reviseChunks.length ? reviseChunks.map((chunk) => `- Review ${chunk.sectionTitle || 'this section'}: ${(chunk.summary || chunk.content || '').replace(/\s+/g, ' ').trim().slice(0, 180)}`) : [`- Start with the most central ideas in ${document.title}.`])
-    ];
-
-    return lines.join('\n').trim();
-};
+import { retrieveRelevantChunks, resolveQueryableDocuments } from '../services/retrievalService.js';
+import { scheduleDocumentSummary } from '../services/summaryService.js';
 
 export const summarizeDocument = asyncHandler(async (req, res) => {
     const document = await documentRepository.findOwnedDocument(req.params.id, req.user._id);
@@ -74,82 +16,31 @@ export const summarizeDocument = asyncHandler(async (req, res) => {
         throw new AppError('Document not found', 404, 'DOCUMENT_NOT_FOUND');
     }
 
-    if (document.summary && !req.query.regenerate) {
-        res.json({ summary: document.summary });
+    if (document.ingestionStatus !== 'completed') {
+        throw new AppError('Document processing is not complete yet', 409, 'DOCUMENT_NOT_READY');
+    }
+
+    const regenerate = `${req.query.regenerate || ''}` === 'true';
+
+    if (document.summary && document.summaryStatus === 'ready' && !regenerate) {
+        res.json({
+            status: 'ready',
+            summary: document.summary,
+            updatedAt: document.summaryUpdatedAt
+        });
         return;
     }
 
-    const chunks = filterStudyWorthChunks(await chunkRepository.listByDocument(document._id));
-    if (!chunks.length) {
-        throw new AppError('Summary source content is not available yet', 400, 'SUMMARY_SOURCE_EMPTY');
-    }
-    
-    // [OPTIMISATION] Hierarchical Summary
-    // We combine the pre-generated chunk summaries from offline processing
-    // instead of loading raw chunks, saving massive amount of tokens and hitting Pro dynamically.
-    const chunkSummaries = chunks
-        .slice(0, 40)
-        .map((c) => `- ${c.sectionTitle || 'Section'}: ${(c.summary || c.content || '').replace(/\s+/g, ' ').trim().slice(0, 260)}`)
-        .join('\n');
-    const summarySource = chunkSummaries || (document.textContent || '').slice(0, 15000);
-
-    let summary = '';
-    try {
-        summary = await generateText(`You are an expert tutor creating a comprehensive study guide summary for a student.
-Document title: ${document.title}
-
-Below are the pre-computed section summaries of the document. Read through the hierarchical flow and produce a final, high-quality overall summary.
-
-Write a structured, meaningful summary with these exact sections:
-1. Overview
-2. Main Topics
-3. Key Ideas and Definitions
-4. Important Methods, Proofs, or Examples
-5. What to Revise First
-
-Requirements:
-- Use concise headings and bullet points.
-- Be specific to the provided section summaries.
-- Mention important terms from the document, not generic filler.
-- Keep the output detailed and study-ready (not just 1-2 lines).
-- For each section, provide at least 2-3 meaningful bullet points.
-- Include concrete terms, methods, and examples where available.
-- Output clean plain text only. Do not use Markdown symbols like **, #, or + bullets.
-
-Section Summaries:
-${summarySource}`, { maxTokens: 700 });
-
-        if (isSummaryTooShort(summary)) {
-            summary = await generateText(`Improve the summary quality below.
-Make it detailed, specific, and readable for revision.
-Keep sections exactly:
-1. Overview
-2. Main Topics
-3. Key Ideas and Definitions
-4. Important Methods, Proofs, or Examples
-5. What to Revise First
-Use clean plain text only. Do not use Markdown symbols like **, #, or + bullets.
-
-Current summary:
-${summary}
-
-Reference section summaries:
-${summarySource}`, { maxTokens: 760 });
-        }
-    } catch (error) {
-        summary = buildStructuredSummaryFallback(document, chunks);
+    if (regenerate || document.summaryStatus !== 'generating') {
+        scheduleDocumentSummary(document._id, { force: regenerate });
     }
 
-    summary = cleanSummaryFormatting(summary);
-
-    if (isSummaryTooShort(summary)) {
-        summary = buildStructuredSummaryFallback(document, chunks);
-    }
-
-    document.summary = summary;
-    await document.save();
-
-    res.json({ summary });
+    res.status(202).json({
+        status: 'generating',
+        summary: document.summary || '',
+        updatedAt: document.summaryUpdatedAt,
+        error: document.summaryError || null
+    });
 });
 
 export const explainText = asyncHandler(async (req, res) => {
@@ -182,6 +73,50 @@ Relevant document excerpts:
 ${contextExcerpt}`, { maxTokens: 520 });
 
     res.json({ explanation });
+});
+
+export const retrieveContext = asyncHandler(async (req, res) => {
+    const { query, documentIds = [], topK } = req.body;
+    if (!`${query || ''}`.trim()) {
+        throw new AppError('Query is required', 400, 'MISSING_QUERY');
+    }
+
+    const documents = await resolveQueryableDocuments({
+        userId: req.user._id,
+        documentIds
+    });
+
+    if (!documents.length) {
+        throw new AppError('No documents available for retrieval', 404, 'DOCUMENTS_NOT_FOUND');
+    }
+
+    const chunks = await retrieveRelevantChunks({
+        userId: req.user._id,
+        documentIds: documents.map((document) => document._id),
+        query,
+        topK
+    });
+
+    res.json({
+        query,
+        documents: documents.map((document) => ({
+            id: document._id,
+            title: document.title || document.originalName
+        })),
+        chunks: chunks.map((chunk) => ({
+            id: chunk._id,
+            document: chunk.document,
+            documentTitle: chunk.documentTitle || 'Uploaded Document',
+            sectionTitle: chunk.sectionTitle || 'Untitled Section',
+            pageStart: chunk.pageStart || 1,
+            pageEnd: chunk.pageEnd || chunk.pageStart || 1,
+            chunkIndex: chunk.chunkIndex || 0,
+            semanticScore: chunk.semanticScore || 0,
+            summary: chunk.summary || '',
+            keywords: chunk.keywords || [],
+            content: chunk.content
+        }))
+    });
 });
 
 export const chatDocument = asyncHandler(async (req, res) => {

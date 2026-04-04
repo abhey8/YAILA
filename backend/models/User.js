@@ -6,6 +6,7 @@ const userSchema = new mongoose.Schema({
     password: { type: String, required: true },
     age: { type: Number },
     studySpecifications: { type: String },
+    isGuest: { type: Boolean, default: false, index: true },
     profilePic: { type: String }, // Store the path/URL to the picture
     createdAt: { type: Date, default: Date.now }
 });

@@ -3,6 +3,7 @@ import { cosineSimilarity } from '../lib/math.js';
 import { chunkRepository } from '../repositories/chunkRepository.js';
 import { documentRepository } from '../repositories/documentRepository.js';
 import { embedTexts } from './aiService.js';
+import { getVectorStore } from './vectorStores/vectorStoreFactory.js';
 
 const LOGIC_OPERATOR_ALIASES = [
     [/⊕|xor/gi, ' exclusive_or xor '],
@@ -147,6 +148,40 @@ const applyDiversityFilter = (chunks, policy) => {
     return selected.length ? selected : chunks.slice(0, policy.finalContextSize);
 };
 
+const expandContextWindows = async (chunks, radius, limit) => {
+    if (!chunks.length || radius <= 0 || chunks.length >= limit) {
+        return chunks.slice(0, limit);
+    }
+
+    const grouped = new Map();
+    chunks.slice(0, Math.min(2, chunks.length)).forEach((chunk) => {
+        const documentId = chunk.document?.toString?.() || `${chunk.document}`;
+        const indexes = grouped.get(documentId) || [];
+        indexes.push(chunk.chunkIndex);
+        grouped.set(documentId, indexes);
+    });
+
+    const adjacentGroups = await Promise.all(
+        [...grouped.entries()].map(async ([documentId, indexes]) => chunkRepository.listAdjacentByDocument(documentId, indexes, radius))
+    );
+
+    const existingKeys = new Set(chunks.map((chunk) => chunkKey(chunk)));
+    const adjacent = adjacentGroups
+        .flat()
+        .map(toPlainChunk)
+        .filter((chunk) => {
+            const key = chunkKey(chunk);
+            if (existingKeys.has(key)) {
+                return false;
+            }
+            existingKeys.add(key);
+            return true;
+        })
+        .sort((left, right) => left.chunkIndex - right.chunkIndex);
+
+    return [...chunks, ...adjacent].slice(0, limit);
+};
+
 export const resolveQueryableDocuments = async ({ userId, documentIds = [] }) => {
     if (!userId) {
         return [];
@@ -180,6 +215,7 @@ export const retrieveRelevantChunks = async ({
     const documentTitleById = new Map(
         resolvedDocuments.map((document) => [document._id.toString(), document.title || document.originalName])
     );
+    const vectorStore = getVectorStore();
 
     const attachTitles = (items = []) => items.map((item) => ({
         ...item,
@@ -195,9 +231,12 @@ export const retrieveRelevantChunks = async ({
     }
 
     const fetchLexicalCandidates = async () => {
-        const chunks = resolvedIds.length === 1
-            ? await chunkRepository.listByDocument(resolvedIds[0])
-            : await chunkRepository.listByDocuments(resolvedIds);
+        const chunks = await chunkRepository.lexicalSearchByDocuments(
+            resolvedIds,
+            userId,
+            query,
+            retrievalPolicy.lexicalCandidatePool
+        );
         return chunks
             .map((chunk) => {
                 const plain = toPlainChunk(chunk);
@@ -215,9 +254,12 @@ export const retrieveRelevantChunks = async ({
 
     const fetchVectorCandidates = async () => {
         if (!queryEmbedding?.length) return [];
-        const vectorRaw = resolvedIds.length === 1
-            ? await chunkRepository.vectorSearch(resolvedIds[0], queryEmbedding, retrievalPolicy.vectorCandidatePool)
-            : await chunkRepository.vectorSearchByDocuments(resolvedIds, userId, queryEmbedding, retrievalPolicy.vectorCandidatePool);
+        const vectorRaw = await vectorStore.search({
+            documentIds: resolvedIds,
+            userId,
+            queryEmbedding,
+            topK: retrievalPolicy.vectorCandidatePool
+        });
         return vectorRaw.map((chunk) => ({
             ...toPlainChunk(chunk),
             lexicalScore: lexicalScore(query, chunk.content || '')
@@ -241,13 +283,21 @@ export const retrieveRelevantChunks = async ({
         }
 
         const reranked = rerank(query, merged).slice(0, retrievalPolicy.rerankPoolSize);
-        const diversified = applyDiversityFilter(reranked, retrievalPolicy);
+        const diversified = await expandContextWindows(
+            applyDiversityFilter(reranked, retrievalPolicy),
+            env.retrievalContextRadius,
+            retrievalPolicy.finalContextSize
+        );
 
         return attachTitles(diversified);
     } catch (err) {
         const lexicalFallback = await fetchLexicalCandidates();
         const reranked = rerank(query, lexicalFallback).slice(0, retrievalPolicy.rerankPoolSize);
-        const diversified = applyDiversityFilter(reranked, retrievalPolicy);
+        const diversified = await expandContextWindows(
+            applyDiversityFilter(reranked, retrievalPolicy),
+            env.retrievalContextRadius,
+            retrievalPolicy.finalContextSize
+        );
         return attachTitles(diversified);
     }
 };
