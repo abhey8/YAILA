@@ -43,7 +43,7 @@ const isDefinitionStyleIntent = (message = '') => /^(what is|who is|define|meani
 const isLikelyGeneralIntent = (message = '') => /(how are you|who are you|tell me a joke|weather|news|time|date)/i.test(message) || isCapabilityIntent(message) || /\b\d+\s*[\+\-\*\/]\s*\d+\b/.test(message) || /\b\d+\s*(to the power|power)\s*\d+\b/i.test(message) || /\b\d+\s*\*\*\s*\d+\b/.test(message);
 const isExplicitGeneralIntent = (message = '') => /(general question|not from (the )?(document|pdf|book)|off[- ]?topic|just chat|casual chat|without document|in general)\b/i.test(normalizeText(message));
 const isLikelyDocIntent = (message = '') => /(document|pdf|book|chapter|section|uploaded|material|notes|from this|according to|summarize|summary|flashcard|quiz|proof|equivalence|logic|quantifier|normal form|xor|biconditional|conditional|de morgan|forall|exists|⊕|∀|∃|¬|∧|∨|→|↔)/i.test(message || '');
-const isOverviewIntent = (message = '') => /(what (math|main|major|core)? topics|what does (this|the) (book|document|pdf|chapter) cover|which topics|topics covered|table of contents|contents|syllabus|chapter overview|give me the topics|what are the topics|overview of the book|summari[sz]e( this| the (book|document|pdf|chapter))?)/i.test(normalizeText(message));
+const isOverviewIntent = (message = '') => /(what (math|main|major|core)? topics|what does (this|the) (book|document|pdf|chapter) cover|which topics|topics covered|table of contents|contents|syllabus|chapter overview|give me the topics|what are the topics|overview of the book|summari[sz]e( this| the (book|document|pdf|chapter))?|study plan|roadmap|how should i study|plan for the whole book|prepare a study plan)/i.test(normalizeText(message));
 
 const detectReplyStyle = (message = '') => {
     if (/[\u0900-\u097f]/.test(message)) {
@@ -204,6 +204,7 @@ Rules:
 - ${buildStyleInstruction(replyStyle)}
 - Match the user's tone. If the question sounds formal or evaluative, be professional. If it sounds casual, be conversational.
 ${isOverviewQuery ? '- This is a broad overview question. Use the document-level overview and concept list to cover the breadth of the material, not just one excerpt.' : ''}
+${/study plan|roadmap|how should i study|plan for the whole book|prepare a study plan/i.test(normalizeText(message)) ? '- The user is asking for a study plan. Organize the answer as a practical sequence of study phases with topic grouping, suggested order, and what to practice after each phase.' : ''}
 
 Conversation memory:
 ${memory || 'None'}

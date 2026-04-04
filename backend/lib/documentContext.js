@@ -12,14 +12,21 @@ export const sampleChunksForPrompt = (chunks, maxChunks = 12) => {
 
     // Filter out likely intro chunks from the start of the list before sampling
     let startOffset = 0;
-    while (startOffset < Math.min(filteredChunks.length, 6)) {
-        const section = (filteredChunks[startOffset].sectionTitle || '').toUpperCase();
-        const content = (filteredChunks[startOffset].content || '').toUpperCase();
-        const isIntro = section.includes('PREFACE') || 
-                        section.includes('ACKNOWLEDGMENT') || 
-                        section.includes('DEDICATION') ||
-                        content.includes('PUBLISHED BY') ||
-                        content.includes('ALL RIGHTS RESERVED');
+    while (startOffset < Math.min(filteredChunks.length, 12)) {
+        const section = `${filteredChunks[startOffset].sectionTitle || ''}`.toUpperCase().replace(/\s+/g, '');
+        const content = `${filteredChunks[startOffset].content || ''}`.toUpperCase().replace(/\s+/g, '');
+        const isIntro = section.includes('PREFACE')
+                        || section.includes('ACKNOWLEDGMENT')
+                        || section.includes('ACKNOWLEDGEMENT')
+                        || section.includes('DEDICATION')
+                        || section.includes('TABLEOFCONTENTS')
+                        || section.includes('USEOFTHEBOOK')
+                        || section.includes('PREREQUISITES')
+                        || section.includes('SUPPORTONTHEWORLDWIDEWEB')
+                        || section === 'EXERCISES'
+                        || content.includes('PUBLISHEDBY')
+                        || content.includes('ALLRIGHTSRESERVED')
+                        || content.includes('TABLEOFCONTENTS');
         
         if (isIntro) {
             startOffset += 1;

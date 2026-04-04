@@ -10,6 +10,7 @@ import { updateConceptMastery } from './masteryService.js';
 import { createNotification } from './notificationService.js';
 import { trackActivity } from './activityService.js';
 import { filterStudyWorthConcepts } from '../lib/studyContent.js';
+import { sampleChunksForPrompt } from '../lib/documentContext.js';
 
 const DIFFICULTY_GUIDANCE = {
     easy: 'Keep questions direct, definition-based, and single-step.',
@@ -20,12 +21,83 @@ const DIFFICULTY_GUIDANCE = {
 const MAX_GENERATION_ATTEMPTS = 3;
 const SEMANTIC_DUPLICATE_THRESHOLD = 0.72;
 
-const buildQuizFromConceptsPrompt = (documents, concepts, count, difficulty, existingQuestions = []) => `Generate ${count} high-quality MCQs grounded strictly in the provided study concepts.
+const lexicalScore = (needle, haystack) => {
+    const tokens = (`${needle}`.toLowerCase().match(/[a-z0-9]{3,}/g) || []);
+    if (!tokens.length) {
+        return 0;
+    }
+
+    const lowered = `${haystack}`.toLowerCase();
+    const matches = tokens.filter((token) => lowered.includes(token)).length;
+    return matches / tokens.length;
+};
+
+const toChunkId = (value) => value?.toString?.() || `${value}`;
+
+const buildConceptAnchoredChunkSet = (concepts = [], chunkMap = new Map(), requestedCount = 10) => {
+    const selected = [];
+    const seen = new Set();
+
+    concepts
+        .filter((concept) => Array.isArray(concept.chunkRefs) && concept.chunkRefs.length)
+        .slice(0, Math.max(requestedCount * 2, 12))
+        .forEach((concept) => {
+            concept.chunkRefs.slice(0, 2).forEach((chunkId) => {
+                const key = toChunkId(chunkId);
+                const chunk = chunkMap.get(key);
+                if (!chunk || seen.has(key)) {
+                    return;
+                }
+                seen.add(key);
+                selected.push(chunk);
+            });
+        });
+
+    return selected;
+};
+
+const mergeUniqueChunks = (...chunkLists) => {
+    const merged = [];
+    const seen = new Set();
+
+    chunkLists.flat().forEach((chunk) => {
+        const key = toChunkId(chunk?._id);
+        if (!chunk || seen.has(key)) {
+            return;
+        }
+        seen.add(key);
+        merged.push(chunk);
+    });
+
+    return merged;
+};
+
+const selectQuestionCitations = (question, chunks, preferredChunk = null) => {
+    const sourceChunks = preferredChunk ? [preferredChunk, ...chunks.filter((chunk) => toChunkId(chunk._id) !== toChunkId(preferredChunk._id))] : chunks;
+    return sourceChunks
+        .map((chunk) => ({
+            chunk,
+            score: lexicalScore(question, `${chunk.content || ''} ${chunk.summary || ''}`)
+        }))
+        .sort((left, right) => right.score - left.score)
+        .slice(0, 2)
+        .map((entry) => ({
+            document: entry.chunk.document,
+            chunk: entry.chunk._id,
+            documentTitle: entry.chunk.documentTitle,
+            sectionTitle: entry.chunk.sectionTitle || 'Untitled Section'
+        }));
+};
+
+const buildQuizPrompt = (documents, concepts, sampledChunks, count, difficulty, existingQuestions = []) => `Generate ${count} high-quality MCQs grounded strictly in the provided study concepts and excerpts.
 Documents:
 ${documents.map((document) => `- ${document.title || document.originalName}`).join('\n')}
 
 Core concepts:
 ${concepts.map((concept) => `- ${concept.name}: ${concept.description}`).join('\n')}
+
+Excerpts:
+${sampledChunks.map((chunk, index) => `Excerpt ${index + 1} (${chunk.sectionTitle || 'Section'}): ${(chunk.summary || chunk.content || '').replace(/\s+/g, ' ').trim().slice(0, 320)}`).join('\n\n')}
 
 Return JSON array only. Each item:
 - question
@@ -33,35 +105,14 @@ Return JSON array only. Each item:
 - correctAnswer (must exactly match one option)
 - explanation
 - conceptNames (array with 1-3 concept names)
+- sourceExcerptIndex (1-based index of the excerpt that directly supports the answer)
 
 Rules:
 - No outside knowledge.
 - No repeated questions or near-duplicates.
 - Cover varied concepts across the list.
-- Ignore dedications, blank pages, front matter, and author biography content.
-- Difficulty: ${difficulty.toUpperCase()}
-- ${DIFFICULTY_GUIDANCE[difficulty]}
-${existingQuestions.length ? `- Do not repeat these questions:\n${existingQuestions.map((q) => `  * ${q}`).join('\n')}` : ''}`;
-
-const buildQuizFromChunksPrompt = (documents, chunkText, count, difficulty, existingQuestions = []) => `Generate ${count} MCQs grounded strictly in these document excerpts.
-Documents:
-${documents.map((document) => `- ${document.title || document.originalName}`).join('\n')}
-
-Excerpts:
-${chunkText}
-
-Return JSON array only. Each item:
-- question
-- options (array of 4 strings)
-- correctAnswer (must exactly match one option)
-- explanation
-- conceptNames (array, can be empty)
-
-Rules:
-- Questions must be answerable directly from excerpts.
-- No outside knowledge.
-- Avoid repeated or near-duplicate questions.
-- Maintain concept/topic variety.
+- Every question must be answerable from a specific excerpt above.
+- The explanation must match the supporting excerpt.
 - Ignore dedications, blank pages, front matter, and author biography content.
 - Difficulty: ${difficulty.toUpperCase()}
 - ${DIFFICULTY_GUIDANCE[difficulty]}
@@ -96,13 +147,17 @@ const normalizeQuestions = (rawQuestions, maxCount) => {
             const conceptNames = Array.isArray(item.conceptNames)
                 ? item.conceptNames.map((name) => `${name}`.trim()).filter(Boolean).slice(0, 3)
                 : [];
+            const sourceExcerptIndex = Number.isFinite(Number(item.sourceExcerptIndex))
+                ? Number(item.sourceExcerptIndex)
+                : null;
 
             return {
                 question,
                 options: uniqueOptions,
                 correctAnswer,
                 explanation,
-                conceptNames
+                conceptNames,
+                sourceExcerptIndex
             };
         })
         .filter((item) => item && item.question && item.options.length === 4 && item.correctAnswer);
@@ -177,6 +232,22 @@ const enforceConceptVariety = (questions = [], desiredCount = 5) => {
     return selected.slice(0, desiredCount);
 };
 
+const scoreQuestionSupport = (question, chunks = []) => {
+    const combined = `${question.question} ${question.correctAnswer} ${question.explanation || ''}`;
+    const excerptIndex = Number(question.sourceExcerptIndex);
+    const preferredChunk = Number.isInteger(excerptIndex) && excerptIndex >= 1 && excerptIndex <= chunks.length
+        ? chunks[excerptIndex - 1]
+        : null;
+    const sourcePool = preferredChunk ? [preferredChunk] : chunks;
+
+    return sourcePool.reduce((best, chunk) => {
+        const score = lexicalScore(combined, `${chunk.summary || ''} ${chunk.content || ''}`);
+        return Math.max(best, score);
+    }, 0);
+};
+
+const filterGroundedQuestions = (questions = [], chunks = []) => questions.filter((question) => scoreQuestionSupport(question, chunks) >= 0.22);
+
 const balanceCorrectAnswerPositions = (questions = []) => questions.map((question, index) => {
     const targetIndex = index % 4;
     const options = [...question.options];
@@ -202,13 +273,20 @@ export const generateAdaptiveQuiz = async (documents, userId, options = {}) => {
     const difficulty = ['easy', 'medium', 'hard'].includes(options.difficulty) ? options.difficulty : 'medium';
     const documentIds = documents.map((document) => document._id);
     const concepts = filterStudyWorthConcepts(await conceptRepository.listByDocuments(documentIds));
-    const chunks = await chunkRepository.listByDocumentsOrdered(documentIds);
-    const excerptText = chunks
-        .slice(0, Math.max(count * 4, 24))
-        .map((chunk, index) => `Excerpt ${index + 1} (${chunk.sectionTitle || 'Section'}): ${(chunk.summary || chunk.content || '').replace(/\s+/g, ' ').trim().slice(0, 320)}`)
-        .join('\n\n');
+    const chunks = (await chunkRepository.listByDocumentsOrdered(documentIds)).map((chunk) => ({
+        ...chunk.toObject(),
+        documentTitle: documents.find((document) => document._id.toString() === chunk.document.toString())?.title
+            || documents.find((document) => document._id.toString() === chunk.document.toString())?.originalName
+            || 'Uploaded Document'
+    }));
+    const chunkMap = new Map(chunks.map((chunk) => [toChunkId(chunk._id), chunk]));
+    const conceptAnchoredChunks = buildConceptAnchoredChunkSet(concepts, chunkMap, count);
+    const sampledChunks = mergeUniqueChunks(
+        conceptAnchoredChunks,
+        sampleChunksForPrompt(chunks, Math.min(14, Math.max(10, count + 5)))
+    ).slice(0, Math.min(18, count + 10));
 
-    if (!concepts.length && !excerptText.trim()) {
+    if (!concepts.length && !sampledChunks.length) {
         throw new AppError('Quiz cannot be generated because document content is unavailable', 400, 'QUIZ_SOURCE_EMPTY');
     }
 
@@ -224,18 +302,14 @@ export const generateAdaptiveQuiz = async (documents, userId, options = {}) => {
     for (let attempt = 1; attempt <= MAX_GENERATION_ATTEMPTS; attempt += 1) {
         const existingQuestions = collected.map((item) => item.question).slice(0, 24);
         try {
-            const payload = targetConcepts.length
-                ? await generateJson(
-                    buildQuizFromConceptsPrompt(documents, targetConcepts, count, difficulty, existingQuestions),
-                    generationConfig
-                )
-                : await generateJson(
-                    buildQuizFromChunksPrompt(documents, excerptText, count, difficulty, existingQuestions),
-                    generationConfig
-                );
+            const payload = await generateJson(
+                buildQuizPrompt(documents, targetConcepts, sampledChunks, count, difficulty, existingQuestions),
+                generationConfig
+            );
 
             const normalized = normalizeQuestions(payload, count * 2);
-            collected = dedupeSemantically([...collected, ...normalized]).slice(0, count * 2);
+            const grounded = filterGroundedQuestions(normalized, sampledChunks);
+            collected = dedupeSemantically([...collected, ...grounded]).slice(0, count * 2);
             if (collected.length >= count) {
                 break;
             }
@@ -259,6 +333,7 @@ export const generateAdaptiveQuiz = async (documents, userId, options = {}) => {
 
     let finalQuestions = enforceConceptVariety(collected, count);
     finalQuestions = dedupeSemantically(finalQuestions).slice(0, count);
+    finalQuestions = filterGroundedQuestions(finalQuestions, sampledChunks);
     finalQuestions = balanceCorrectAnswerPositions(finalQuestions);
 
     if (finalQuestions.length < count) {
@@ -300,7 +375,13 @@ export const generateAdaptiveQuiz = async (documents, userId, options = {}) => {
                 .map((name) => conceptByName.get(name.toLowerCase())?._id)
                 .filter(Boolean),
             conceptEmbedding: questionEmbeddings[index] || [],
-            citations: []
+            citations: selectQuestionCitations(
+                `${item.question} ${item.correctAnswer} ${item.explanation || ''}`,
+                sampledChunks,
+                Number.isInteger(item.sourceExcerptIndex) && item.sourceExcerptIndex >= 1 && item.sourceExcerptIndex <= sampledChunks.length
+                    ? sampledChunks[item.sourceExcerptIndex - 1]
+                    : null
+            )
         }))
     });
 };

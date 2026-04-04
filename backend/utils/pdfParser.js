@@ -5,22 +5,25 @@ import { normalizeWhitespace } from '../lib/text.js';
 
 const LINE_Y_TOLERANCE = 2.4;
 const MAX_PARAGRAPH_LINES = 12;
+const WORD_GAP_THRESHOLD = 4;
 
 const toTextItem = (item) => ({
-    text: `${item?.str || ''}`.replace(/\s+/g, ' ').trim(),
+    raw: `${item?.str || ''}`.replace(/[\u0000-\u0008\u000B\u000C\u000E-\u001F\u007F]/g, ''),
+    text: `${item?.str || ''}`.replace(/[\u0000-\u0008\u000B\u000C\u000E-\u001F\u007F]/g, ''),
     x: Number(item?.transform?.[4] || 0),
-    y: Number(item?.transform?.[5] || 0)
+    y: Number(item?.transform?.[5] || 0),
+    width: Number(item?.width || 0)
 });
 
 const finalizeLine = (line) => ({
     y: line.y,
-    text: normalizeWhitespace(line.parts.join(' '))
+    text: normalizeWhitespace(line.text)
 });
 
 const groupItemsIntoLines = (items = []) => {
     const normalized = items
         .map(toTextItem)
-        .filter((item) => item.text);
+        .filter((item) => item.raw);
 
     if (!normalized.length) {
         return [];
@@ -41,17 +44,33 @@ const groupItemsIntoLines = (items = []) => {
             if (currentLine?.parts?.length) {
                 lines.push(finalizeLine(currentLine));
             }
-            currentLine = { y: item.y, lastX: item.x, parts: [item.text] };
+            currentLine = {
+                y: item.y,
+                lastRight: item.x + item.width,
+                parts: [item.text],
+                text: /^\s+$/.test(item.text) ? '' : item.text
+            };
             return;
         }
 
-        const gap = item.x - currentLine.lastX;
-        if (gap > 24) {
-            currentLine.parts.push(item.text);
+        const gap = item.x - currentLine.lastRight;
+        const rawText = item.text;
+        const isWhitespace = /^\s+$/.test(rawText);
+        const normalizedText = rawText.replace(/\s+/g, ' ');
+
+        currentLine.parts.push(rawText);
+        if (isWhitespace) {
+            if (currentLine.text && !currentLine.text.endsWith(' ')) {
+                currentLine.text += ' ';
+            }
         } else {
-            currentLine.parts.push(item.text);
+            const shouldInsertSpace = currentLine.text
+                && !currentLine.text.endsWith(' ')
+                && gap > WORD_GAP_THRESHOLD
+                && !/^[,.;:!?)]/.test(normalizedText);
+            currentLine.text += `${shouldInsertSpace ? ' ' : ''}${normalizedText}`;
         }
-        currentLine.lastX = item.x;
+        currentLine.lastRight = item.x + item.width;
     });
 
     if (currentLine?.parts?.length) {

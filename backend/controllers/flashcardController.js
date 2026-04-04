@@ -23,7 +23,9 @@ const lexicalScore = (needle, haystack) => {
     return matches / tokens.length;
 };
 
-const selectCitations = (question, chunks) => chunks
+const selectCitations = (question, chunks, preferredChunk = null) => {
+    const sourceChunks = preferredChunk ? [preferredChunk, ...chunks.filter((chunk) => toChunkId(chunk._id) !== toChunkId(preferredChunk._id))] : chunks;
+    return sourceChunks
     .map((chunk) => ({
         chunk,
         score: lexicalScore(question, `${chunk.content} ${chunk.summary || ''}`)
@@ -36,6 +38,47 @@ const selectCitations = (question, chunks) => chunks
         documentTitle: entry.chunk.documentTitle,
         sectionTitle: entry.chunk.sectionTitle || 'Untitled Section'
     }));
+};
+
+const toChunkId = (value) => value?.toString?.() || `${value}`;
+
+const buildConceptAnchoredChunkSet = (concepts = [], chunkMap = new Map(), requestedCount = 10) => {
+    const selected = [];
+    const seen = new Set();
+
+    concepts
+        .filter((concept) => Array.isArray(concept.chunkRefs) && concept.chunkRefs.length)
+        .slice(0, Math.max(requestedCount * 2, 10))
+        .forEach((concept) => {
+            concept.chunkRefs.slice(0, 2).forEach((chunkId) => {
+                const key = toChunkId(chunkId);
+                const chunk = chunkMap.get(key);
+                if (!chunk || seen.has(key)) {
+                    return;
+                }
+                seen.add(key);
+                selected.push(chunk);
+            });
+        });
+
+    return selected;
+};
+
+const mergeUniqueChunks = (...chunkLists) => {
+    const merged = [];
+    const seen = new Set();
+
+    chunkLists.flat().forEach((chunk) => {
+        const key = toChunkId(chunk?._id);
+        if (!chunk || seen.has(key)) {
+            return;
+        }
+        seen.add(key);
+        merged.push(chunk);
+    });
+
+    return merged;
+};
 
 const normalizeFlashcards = (raw = []) => {
     if (!Array.isArray(raw)) return [];
@@ -43,7 +86,10 @@ const normalizeFlashcards = (raw = []) => {
         .filter((item) => item && item.question && item.answer)
         .map((item) => ({
             question: `${item.question}`.replace(/\s+/g, ' ').trim(),
-            answer: `${item.answer}`.replace(/\s+/g, ' ').trim()
+            answer: `${item.answer}`.replace(/\s+/g, ' ').trim(),
+            sourceExcerptIndex: Number.isFinite(Number(item.sourceExcerptIndex))
+                ? Number(item.sourceExcerptIndex)
+                : null
         }))
         .filter((item) => item.question.length > 8 && item.answer.length > 8);
 };
@@ -127,6 +173,22 @@ const enforceConceptCoverage = (cards = [], concepts = [], requestedCount = 10) 
     return selected.slice(0, requestedCount);
 };
 
+const scoreCardSupport = (card, chunks = []) => {
+    const combined = `${card.question} ${card.answer}`;
+    const excerptIndex = Number(card.sourceExcerptIndex);
+    const preferredChunk = Number.isInteger(excerptIndex) && excerptIndex >= 1 && excerptIndex <= chunks.length
+        ? chunks[excerptIndex - 1]
+        : null;
+    const sourcePool = preferredChunk ? [preferredChunk] : chunks;
+
+    return sourcePool.reduce((best, chunk) => {
+        const score = lexicalScore(combined, `${chunk.summary || ''} ${chunk.content || ''}`);
+        return Math.max(best, score);
+    }, 0);
+};
+
+const filterGroundedCards = (cards = [], chunks = []) => cards.filter((card) => scoreCardSupport(card, chunks) >= 0.24);
+
 const buildPrompt = ({
     requestedCount,
     sourceDocuments,
@@ -142,15 +204,17 @@ ${concepts.length ? concepts.map((concept) => `- ${concept.name}: ${concept.desc
 
 Rules:
 - Every flashcard must be grounded in the excerpts below.
+- Only create a flashcard when the answer can be directly supported by the excerpts below.
 - Cover varied concepts (definitions, methods, distinctions, proof ideas).
 - Avoid semantic duplicates.
 - No outside knowledge.
 - Ignore dedications, publisher pages, blank pages, and author bio material.
 - Keep answers concise but technically meaningful.
+- Prefer exact textbook meaning over guessed paraphrases.
 ${existingQuestions.length ? `- Do not repeat these questions:\n${existingQuestions.map((q) => `  * ${q}`).join('\n')}` : ''}
 
 Return JSON array only with objects:
-{ "question": "...", "answer": "..." }
+{ "question": "...", "answer": "...", "sourceExcerptIndex": 1 }
 
 Excerpts:
 ${sampledChunks.map((chunk, index) => `Excerpt ${index + 1}
@@ -197,8 +261,14 @@ export const generateFlashcards = asyncHandler(async (req, res) => {
         20,
         Math.max(5, Number(req.query.count) || Number(body.count) || 10)
     );
-    const sampledChunks = sampleChunksForPrompt(chunks, Math.min(12, Math.max(8, requestedCount + 3)));
-    const concepts = filterStudyWorthConcepts(await conceptRepository.listByDocuments(sourceDocumentIds));
+    const chunkMap = new Map(chunks.map((chunk) => [toChunkId(chunk._id), chunk]));
+    const concepts = filterStudyWorthConcepts(await conceptRepository.listByDocuments(sourceDocumentIds))
+        .filter((concept) => !Array.isArray(concept.chunkRefs) || concept.chunkRefs.length > 0);
+    const conceptAnchoredChunks = buildConceptAnchoredChunkSet(concepts, chunkMap, requestedCount);
+    const sampledChunks = mergeUniqueChunks(
+        conceptAnchoredChunks,
+        sampleChunksForPrompt(chunks, Math.min(12, Math.max(8, requestedCount + 3)))
+    ).slice(0, Math.min(16, requestedCount + 8));
 
     if (!sampledChunks.length) {
         throw new AppError('Flashcards cannot be generated because document content is unavailable', 400, 'FLASHCARD_SOURCE_EMPTY');
@@ -214,13 +284,14 @@ export const generateFlashcards = asyncHandler(async (req, res) => {
                     requestedCount,
                     sourceDocuments,
                     sampledChunks,
-                    concepts: concepts.slice(0, 20),
+                    concepts: concepts.slice(0, 16),
                     existingQuestions: collected.map((item) => item.question).slice(0, 20)
                 }),
                 { maxTokens: Math.min(6500, 400 + requestedCount * 240) }
             );
             const normalized = normalizeFlashcards(payload);
-            collected = dedupeSemantically([...collected, ...normalized]).slice(0, requestedCount * 2);
+            const grounded = filterGroundedCards(normalized, sampledChunks);
+            collected = dedupeSemantically([...collected, ...grounded]).slice(0, requestedCount * 2);
             if (collected.length >= requestedCount) {
                 break;
             }
@@ -247,6 +318,8 @@ export const generateFlashcards = asyncHandler(async (req, res) => {
         });
     }
 
+    finalCards = filterGroundedCards(finalCards, sampledChunks);
+
     const baselineCards = shouldRegenerate ? [] : existingFlashcards;
     const existingQuestionSet = new Set(baselineCards.map((card) => card.question.trim().toLowerCase()));
     const newItems = finalCards.filter((item) => {
@@ -266,14 +339,22 @@ export const generateFlashcards = asyncHandler(async (req, res) => {
     }
 
     const flashcards = await Promise.all(
-        newItems.map(async (flashcard) => Flashcard.create({
-            document: anchorDocument._id,
-            user: req.user._id,
-            sourceDocuments: sourceDocumentIds,
-            question: flashcard.question,
-            answer: flashcard.answer,
-            citations: selectCitations(flashcard.question, sampledChunks)
-        }))
+        newItems.map(async (flashcard) => {
+            const preferredChunk = Number.isInteger(flashcard.sourceExcerptIndex)
+                && flashcard.sourceExcerptIndex >= 1
+                && flashcard.sourceExcerptIndex <= sampledChunks.length
+                ? sampledChunks[flashcard.sourceExcerptIndex - 1]
+                : null;
+
+            return Flashcard.create({
+                document: anchorDocument._id,
+                user: req.user._id,
+                sourceDocuments: sourceDocumentIds,
+                question: flashcard.question,
+                answer: flashcard.answer,
+                citations: selectCitations(`${flashcard.question} ${flashcard.answer}`, sampledChunks, preferredChunk)
+            });
+        })
     );
 
     await trackActivity({

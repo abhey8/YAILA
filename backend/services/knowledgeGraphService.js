@@ -243,10 +243,11 @@ const buildFallbackGraphFromChunks = (chunks = []) => {
 };
 
 export const rebuildKnowledgeGraph = async (document) => {
-    const allChunks = document.chunkCount > 80
+    const rawChunks = document.chunkCount > 80
         ? await chunkRepository.sampleByDocument(document._id, 72)
         : await chunkRepository.listByDocument(document._id);
-    const chunks = sampleChunksForPrompt(filterStudyWorthChunks(allChunks), MAX_PROMPT_CHUNKS);
+    const studyWorthChunks = filterStudyWorthChunks(rawChunks);
+    const chunks = sampleChunksForPrompt(studyWorthChunks, MAX_PROMPT_CHUNKS);
     const nodeLimit = resolveNodeLimit(chunks);
     if (!chunks.length) {
         document.conceptCount = 0;
@@ -307,7 +308,22 @@ export const rebuildKnowledgeGraph = async (document) => {
 
     await conceptRepository.deleteByDocument(document._id);
 
-    const created = await conceptRepository.createMany(bestGraph.nodes.map((node, index) => ({
+    const graphNodes = bestGraph.nodes
+        .map((node, index) => ({
+            ...node,
+            embedding: embeddings[index] || [],
+            chunkRefs: selectChunkRefsForNode(node, studyWorthChunks)
+        }))
+        .filter((node) => node.chunkRefs.length > 0)
+        .filter((node, index, list) => list.findIndex((candidate) => candidate.id === node.id) === index);
+
+    if (!graphNodes.length) {
+        throw new AppError('Knowledge graph extraction produced only low-quality concepts', 502, 'KNOWLEDGE_GRAPH_LOW_QUALITY', {
+            documentId: document._id.toString()
+        });
+    }
+
+    const created = await conceptRepository.createMany(graphNodes.map((node) => ({
         document: document._id,
         user: document.user,
         name: node.label,
@@ -316,10 +332,10 @@ export const rebuildKnowledgeGraph = async (document) => {
         keywords: node.keywords,
         difficulty: node.difficulty,
         importance: node.importance,
-        embedding: embeddings[index] || [],
+        embedding: node.embedding,
         prerequisiteConcepts: [],
         relatedConcepts: [],
-        chunkRefs: selectChunkRefsForNode(node, chunks)
+        chunkRefs: node.chunkRefs
     })));
 
     const conceptBySlug = new Map(created.map((concept) => [concept.slug, concept]));
