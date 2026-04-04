@@ -6,10 +6,10 @@ import { chunkRepository } from '../repositories/chunkRepository.js';
 import { conceptRepository } from '../repositories/conceptRepository.js';
 import { generateJson } from '../services/aiService.js';
 import { trackActivity } from '../services/activityService.js';
-import { sampleChunksForPrompt } from '../lib/documentContext.js';
 import { filterStudyWorthConcepts } from '../lib/studyContent.js';
+import { loadPromptChunkCandidates, selectPromptExcerpts, toChunkId } from '../lib/promptSources.js';
 
-const MAX_FLASHCARD_ATTEMPTS = 3;
+const MAX_FLASHCARD_ATTEMPTS = 2;
 const SEMANTIC_DUPLICATE_THRESHOLD = 0.75;
 
 const lexicalScore = (needle, haystack) => {
@@ -39,8 +39,6 @@ const selectCitations = (question, chunks, preferredChunk = null) => {
         sectionTitle: entry.chunk.sectionTitle || 'Untitled Section'
     }));
 };
-
-const toChunkId = (value) => value?.toString?.() || `${value}`;
 
 const buildConceptAnchoredChunkSet = (concepts = [], chunkMap = new Map(), requestedCount = 10) => {
     const selected = [];
@@ -200,7 +198,7 @@ Documents:
 ${sourceDocuments.map((document) => `- ${document.title || document.originalName}`).join('\n')}
 
 Concept coverage targets:
-${concepts.length ? concepts.map((concept) => `- ${concept.name}: ${concept.description || ''}`).join('\n') : '- Cover different sections and key definitions'}
+${concepts.length ? concepts.map((concept) => `- ${concept.name}: ${`${concept.description || ''}`.replace(/\s+/g, ' ').trim().slice(0, 80)}`).join('\n') : '- Cover different sections and key definitions'}
 
 Rules:
 - Every flashcard must be grounded in the excerpts below.
@@ -211,6 +209,11 @@ Rules:
 - Ignore dedications, publisher pages, blank pages, and author bio material.
 - Keep answers concise but technically meaningful.
 - Prefer exact textbook meaning over guessed paraphrases.
+- Prefer one concept or distinction per card instead of broad vague questions.
+- Make the question stand alone by naming the concept or method directly.
+- If the excerpt is weak, skip it instead of guessing.
+- Focus on named concepts, methods, definitions, and distinctions instead of isolated formulas or notation fragments.
+- Ignore excerpts that are mostly symbols, isolated equations, or fragmented OCR-like text.
 ${existingQuestions.length ? `- Do not repeat these questions:\n${existingQuestions.map((q) => `  * ${q}`).join('\n')}` : ''}
 
 Return JSON array only with objects:
@@ -220,7 +223,7 @@ Excerpts:
 ${sampledChunks.map((chunk, index) => `Excerpt ${index + 1}
 Document: ${chunk.documentTitle}
 Section: ${chunk.sectionTitle || 'Untitled Section'}
-${(chunk.summary || chunk.content || '').replace(/\s+/g, ' ').trim().slice(0, 240)}`).join('\n\n')}`;
+${(chunk.summary || chunk.content || '').replace(/\s+/g, ' ').trim().slice(0, 140)}`).join('\n\n')}`;
 
 export const generateFlashcards = asyncHandler(async (req, res) => {
     const body = req.body || {};
@@ -251,24 +254,38 @@ export const generateFlashcards = asyncHandler(async (req, res) => {
         await Flashcard.deleteMany({ document: anchorDocument._id, user: req.user._id });
     }
 
-    const chunks = (await chunkRepository.listByDocumentsOrdered(sourceDocumentIds)).map((chunk) => ({
-        ...chunk.toObject(),
-        documentTitle: sourceDocuments.find((document) => document._id.toString() === chunk.document.toString())?.title
-            || sourceDocuments.find((document) => document._id.toString() === chunk.document.toString())?.originalName
-            || 'Uploaded Document'
-    }));
     const requestedCount = Math.min(
         20,
         Math.max(5, Number(req.query.count) || Number(body.count) || 10)
     );
-    const chunkMap = new Map(chunks.map((chunk) => [toChunkId(chunk._id), chunk]));
+    const candidateChunks = await loadPromptChunkCandidates(sourceDocuments, {
+        sampleLimitPerDocument: Math.min(18, Math.max(10, requestedCount + 4))
+    });
     const concepts = filterStudyWorthConcepts(await conceptRepository.listByDocuments(sourceDocumentIds))
         .filter((concept) => !Array.isArray(concept.chunkRefs) || concept.chunkRefs.length > 0);
+    const conceptChunkIds = [...new Set(
+        concepts
+            .filter((concept) => Array.isArray(concept.chunkRefs) && concept.chunkRefs.length)
+            .slice(0, Math.max(requestedCount * 2, 10))
+            .flatMap((concept) => concept.chunkRefs.slice(0, 2).map((chunkId) => toChunkId(chunkId)))
+    )].slice(0, 28);
+    const conceptChunks = conceptChunkIds.length
+        ? (await chunkRepository.listByIds(conceptChunkIds)).map((chunk) => ({
+            ...chunk.toObject(),
+            documentTitle: sourceDocuments.find((document) => document._id.toString() === chunk.document.toString())?.title
+                || sourceDocuments.find((document) => document._id.toString() === chunk.document.toString())?.originalName
+                || 'Uploaded Document'
+        }))
+        : [];
+    const chunkMap = new Map(mergeUniqueChunks(candidateChunks, conceptChunks).map((chunk) => [toChunkId(chunk._id), chunk]));
     const conceptAnchoredChunks = buildConceptAnchoredChunkSet(concepts, chunkMap, requestedCount);
-    const sampledChunks = mergeUniqueChunks(
-        conceptAnchoredChunks,
-        sampleChunksForPrompt(chunks, Math.min(12, Math.max(8, requestedCount + 3)))
-    ).slice(0, Math.min(16, requestedCount + 8));
+    const sampledChunks = selectPromptExcerpts({
+        candidates: candidateChunks,
+        preferredChunks: mergeUniqueChunks(conceptAnchoredChunks, conceptChunks),
+        maxChunks: Math.min(8, Math.max(6, requestedCount)),
+        maxPerSection: 2,
+        maxPerDocument: Math.min(4, Math.max(3, Math.ceil(requestedCount / 2)))
+    });
 
     if (!sampledChunks.length) {
         throw new AppError('Flashcards cannot be generated because document content is unavailable', 400, 'FLASHCARD_SOURCE_EMPTY');
@@ -284,10 +301,10 @@ export const generateFlashcards = asyncHandler(async (req, res) => {
                     requestedCount,
                     sourceDocuments,
                     sampledChunks,
-                    concepts: concepts.slice(0, 16),
+                    concepts: concepts.slice(0, 10),
                     existingQuestions: collected.map((item) => item.question).slice(0, 20)
                 }),
-                { maxTokens: Math.min(6500, 400 + requestedCount * 240) }
+                { maxTokens: Math.min(1600, 260 + requestedCount * 120) }
             );
             const normalized = normalizeFlashcards(payload);
             const grounded = filterGroundedCards(normalized, sampledChunks);

@@ -1,22 +1,23 @@
 import { chunkRepository } from '../repositories/chunkRepository.js';
 import { conceptRepository } from '../repositories/conceptRepository.js';
 import { generateText } from './aiService.js';
-import { filterStudyWorthChunks } from '../lib/studyContent.js';
+import { filterStudyWorthChunks, filterStudyWorthConcepts } from '../lib/studyContent.js';
 import { logger } from '../lib/logger.js';
 import { documentRepository } from '../repositories/documentRepository.js';
+import { selectPromptExcerpts } from '../lib/promptSources.js';
 
 const inFlightSummaries = new Set();
 
 const isSummaryTooShort = (text = '') => {
     const words = text.trim().split(/\s+/).filter(Boolean).length;
     const lines = text.split('\n').map((line) => line.trim()).filter(Boolean).length;
-    const bullets = (text.match(/^[-*]\s+/gm) || []).length;
-    return words < 120 || lines < 8 || bullets < 6;
+    return words < 140 || lines < 5;
 };
 
 const cleanSummaryFormatting = (text = '') => text
     .replace(/\r/g, '')
     .replace(/^#{1,6}\s*/gm, '')
+    .replace(/^[=-]{3,}\s*$/gm, '')
     .replace(/\*\*(.*?)\*\*/g, '$1')
     .replace(/__(.*?)__/g, '$1')
     .replace(/`([^`]+)`/g, '$1')
@@ -67,13 +68,13 @@ const buildStructuredSummaryFallback = (document, chunks, concepts = []) => {
 
 const buildPrompt = ({ document, chunks, concepts }) => {
     const chunkSummaries = chunks
-        .slice(0, 56)
+        .slice(0, 26)
         .map((chunk) => `- ${chunk.sectionTitle || 'Section'} (pages ${chunk.pageStart || 1}-${chunk.pageEnd || chunk.pageStart || 1}): ${(chunk.summary || chunk.content || '').replace(/\s+/g, ' ').trim().slice(0, 260)}`)
         .join('\n');
 
     const conceptList = concepts
-        .slice(0, 24)
-        .map((concept) => `- ${concept.name}: ${`${concept.description || ''}`.replace(/\s+/g, ' ').trim().slice(0, 160)}`)
+        .slice(0, 14)
+        .map((concept) => `- ${concept.name}: ${`${concept.description || ''}`.replace(/\s+/g, ' ').trim().slice(0, 120)}`)
         .join('\n');
 
     return `You are an expert tutor creating a high-quality study guide from a textbook or course document.
@@ -94,7 +95,8 @@ Requirements:
 - Mention the real math topics, themes, methods, and applications visible in the source.
 - Use clear plain text only.
 - Do not use markdown symbols like ** or #.
-- Use short headings and bullet points.
+- Use short headings and concise bullets or short paragraphs.
+- Prefer the strongest academic topics, definitions, methods, and proof ideas over front matter or administrative material.
 
 Section summaries:
 ${chunkSummaries}
@@ -119,18 +121,23 @@ export const generateDocumentSummary = async (document, { force = false } = {}) 
     }
 
     const chunkSource = document.chunkCount > 80
-        ? await chunkRepository.sampleByDocument(document._id, 72)
+        ? await chunkRepository.sampleByDocument(document._id, 42)
         : await chunkRepository.listByDocument(document._id);
-    const chunks = filterStudyWorthChunks(chunkSource);
+    const chunks = selectPromptExcerpts({
+        candidates: filterStudyWorthChunks(chunkSource),
+        maxChunks: 26,
+        maxPerSection: 2,
+        maxPerDocument: 26
+    });
     if (!chunks.length) {
         throw new Error('Summary source content is not available yet');
     }
 
-    const concepts = await conceptRepository.listByDocument(document._id);
+    const concepts = filterStudyWorthConcepts(await conceptRepository.listByDocument(document._id));
 
     let summary = '';
     try {
-        summary = await generateText(buildPrompt({ document, chunks, concepts }), { maxTokens: 900 });
+        summary = await generateText(buildPrompt({ document, chunks, concepts }), { maxTokens: 720 });
 
         if (isSummaryTooShort(summary)) {
             summary = await generateText(`Improve the summary below.
@@ -141,7 +148,7 @@ Current summary:
 ${summary}
 
 Reference concept list:
-${concepts.slice(0, 24).map((concept) => `- ${concept.name}`).join('\n')}`, { maxTokens: 980 });
+${concepts.slice(0, 14).map((concept) => `- ${concept.name}`).join('\n')}`, { maxTokens: 760 });
         }
     } catch (error) {
         logger.warn('[Summary] Falling back to structured summary', {

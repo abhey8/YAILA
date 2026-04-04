@@ -4,13 +4,14 @@ import { AppError } from '../lib/errors.js';
 import { logger } from '../lib/logger.js';
 import { conceptRepository } from '../repositories/conceptRepository.js';
 import { chunkRepository } from '../repositories/chunkRepository.js';
-import { generateJson, embedTexts } from './aiService.js';
+import { generateJson } from './aiService.js';
 import { recordLearningInteraction } from './analyticsService.js';
 import { updateConceptMastery } from './masteryService.js';
 import { createNotification } from './notificationService.js';
 import { trackActivity } from './activityService.js';
 import { filterStudyWorthConcepts } from '../lib/studyContent.js';
-import { sampleChunksForPrompt } from '../lib/documentContext.js';
+import { loadPromptChunkCandidates, selectPromptExcerpts, toChunkId } from '../lib/promptSources.js';
+import { buildLocalEmbeddings } from './localEmbeddingService.js';
 
 const DIFFICULTY_GUIDANCE = {
     easy: 'Keep questions direct, definition-based, and single-step.',
@@ -18,7 +19,7 @@ const DIFFICULTY_GUIDANCE = {
     hard: 'Use deeper reasoning, multi-concept linkage, and fair distractors.'
 };
 
-const MAX_GENERATION_ATTEMPTS = 3;
+const MAX_GENERATION_ATTEMPTS = 2;
 const SEMANTIC_DUPLICATE_THRESHOLD = 0.72;
 
 const lexicalScore = (needle, haystack) => {
@@ -31,8 +32,6 @@ const lexicalScore = (needle, haystack) => {
     const matches = tokens.filter((token) => lowered.includes(token)).length;
     return matches / tokens.length;
 };
-
-const toChunkId = (value) => value?.toString?.() || `${value}`;
 
 const buildConceptAnchoredChunkSet = (concepts = [], chunkMap = new Map(), requestedCount = 10) => {
     const selected = [];
@@ -94,10 +93,10 @@ Documents:
 ${documents.map((document) => `- ${document.title || document.originalName}`).join('\n')}
 
 Core concepts:
-${concepts.map((concept) => `- ${concept.name}: ${concept.description}`).join('\n')}
+${concepts.map((concept) => `- ${concept.name}: ${`${concept.description || ''}`.replace(/\s+/g, ' ').trim().slice(0, 110)}`).join('\n')}
 
 Excerpts:
-${sampledChunks.map((chunk, index) => `Excerpt ${index + 1} (${chunk.sectionTitle || 'Section'}): ${(chunk.summary || chunk.content || '').replace(/\s+/g, ' ').trim().slice(0, 320)}`).join('\n\n')}
+${sampledChunks.map((chunk, index) => `Excerpt ${index + 1} (${chunk.sectionTitle || 'Section'}): ${(chunk.summary || chunk.content || '').replace(/\s+/g, ' ').trim().slice(0, 220)}`).join('\n\n')}
 
 Return JSON array only. Each item:
 - question
@@ -113,6 +112,14 @@ Rules:
 - Cover varied concepts across the list.
 - Every question must be answerable from a specific excerpt above.
 - The explanation must match the supporting excerpt.
+- Use one primary concept per question whenever possible.
+- Prefer questions about definitions, distinctions, proof ideas, consequences, or applications over trivia.
+- Do not copy long sentences from the excerpt into the question.
+- Keep the explanation to 1 or 2 short sentences.
+- Make every question stand alone by naming the concept, object, or method directly.
+- Avoid vague stems like "What are used..." or "How do we approach..." unless the concept is named in the question itself.
+- Focus on named textbook ideas, not stray notation fragments, page-local calculations, or incomplete formula snippets.
+- Ignore excerpts that are mostly symbols, single equations, or fragmented OCR-style text.
 - Ignore dedications, blank pages, front matter, and author biography content.
 - Difficulty: ${difficulty.toUpperCase()}
 - ${DIFFICULTY_GUIDANCE[difficulty]}
@@ -264,8 +271,8 @@ const balanceCorrectAnswerPositions = (questions = []) => questions.map((questio
 });
 
 const estimateQuizMaxTokens = (count, difficulty) => {
-    const perQuestion = difficulty === 'hard' ? 280 : (difficulty === 'medium' ? 220 : 180);
-    return Math.min(6500, Math.max(1200, 500 + count * perQuestion));
+    const perQuestion = difficulty === 'hard' ? 165 : (difficulty === 'medium' ? 145 : 120);
+    return Math.min(2800, Math.max(850, 260 + count * perQuestion));
 };
 
 export const generateAdaptiveQuiz = async (documents, userId, options = {}) => {
@@ -273,25 +280,39 @@ export const generateAdaptiveQuiz = async (documents, userId, options = {}) => {
     const difficulty = ['easy', 'medium', 'hard'].includes(options.difficulty) ? options.difficulty : 'medium';
     const documentIds = documents.map((document) => document._id);
     const concepts = filterStudyWorthConcepts(await conceptRepository.listByDocuments(documentIds));
-    const chunks = (await chunkRepository.listByDocumentsOrdered(documentIds)).map((chunk) => ({
-        ...chunk.toObject(),
-        documentTitle: documents.find((document) => document._id.toString() === chunk.document.toString())?.title
-            || documents.find((document) => document._id.toString() === chunk.document.toString())?.originalName
-            || 'Uploaded Document'
-    }));
-    const chunkMap = new Map(chunks.map((chunk) => [toChunkId(chunk._id), chunk]));
+    const candidateChunks = await loadPromptChunkCandidates(documents, {
+        sampleLimitPerDocument: Math.min(24, Math.max(12, count + 6))
+    });
+    const conceptChunkIds = [...new Set(
+        concepts
+            .filter((concept) => Array.isArray(concept.chunkRefs) && concept.chunkRefs.length)
+            .slice(0, Math.max(count * 2, 12))
+            .flatMap((concept) => concept.chunkRefs.slice(0, 2).map((chunkId) => toChunkId(chunkId)))
+    )].slice(0, 28);
+    const conceptChunks = conceptChunkIds.length
+        ? (await chunkRepository.listByIds(conceptChunkIds)).map((chunk) => ({
+            ...chunk.toObject(),
+            documentTitle: documents.find((document) => document._id.toString() === chunk.document.toString())?.title
+                || documents.find((document) => document._id.toString() === chunk.document.toString())?.originalName
+                || 'Uploaded Document'
+        }))
+        : [];
+    const chunkMap = new Map(mergeUniqueChunks(candidateChunks, conceptChunks).map((chunk) => [toChunkId(chunk._id), chunk]));
     const conceptAnchoredChunks = buildConceptAnchoredChunkSet(concepts, chunkMap, count);
-    const sampledChunks = mergeUniqueChunks(
-        conceptAnchoredChunks,
-        sampleChunksForPrompt(chunks, Math.min(14, Math.max(10, count + 5)))
-    ).slice(0, Math.min(18, count + 10));
+    const sampledChunks = selectPromptExcerpts({
+        candidates: candidateChunks,
+        preferredChunks: mergeUniqueChunks(conceptAnchoredChunks, conceptChunks),
+        maxChunks: Math.min(10, Math.max(7, count + 1)),
+        maxPerSection: 2,
+        maxPerDocument: Math.min(6, Math.max(4, Math.ceil(count / 2)))
+    });
 
     if (!concepts.length && !sampledChunks.length) {
         throw new AppError('Quiz cannot be generated because document content is unavailable', 400, 'QUIZ_SOURCE_EMPTY');
     }
 
     const prioritizedConcepts = [...concepts].sort((a, b) => (b.importance || 0.5) - (a.importance || 0.5));
-    const targetConcepts = prioritizedConcepts.slice(0, Math.max(count * 3, 18));
+    const targetConcepts = prioritizedConcepts.slice(0, Math.min(10, Math.max(Math.ceil(count * 1.5), 6)));
     const generationConfig = {
         maxTokens: estimateQuizMaxTokens(count, difficulty)
     };
@@ -344,16 +365,7 @@ export const generateAdaptiveQuiz = async (documents, userId, options = {}) => {
     }
 
     const conceptByName = new Map(concepts.map((concept) => [concept.name.toLowerCase(), concept]));
-    let questionEmbeddings = [];
-    try {
-        questionEmbeddings = await embedTexts(finalQuestions.map((item) => item.question));
-    } catch (error) {
-        logger.warn('[Quiz] Question embedding generation failed', {
-            reason: error.message,
-            userId: userId.toString()
-        });
-        questionEmbeddings = finalQuestions.map(() => []);
-    }
+    const questionEmbeddings = buildLocalEmbeddings(finalQuestions.map((item) => item.question));
 
     return Quiz.create({
         document: documents[0]._id,
