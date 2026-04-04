@@ -440,6 +440,9 @@ const markFailed = async (document, error) => {
     });
 };
 
+const isMissingDocumentError = (error) => error?.name === 'DocumentNotFoundError'
+    || /No document found for query/i.test(`${error?.message || ''}`);
+
 export const ingestDocument = async (document) => {
     const vectorStore = getVectorStore();
     const sourceChecksum = await buildSourceChecksum(document);
@@ -784,6 +787,15 @@ export const ingestDocument = async (document) => {
 
         return state.metrics.indexedChunks;
     } catch (error) {
+        if (isMissingDocumentError(error)) {
+            logger.warn('[Ingestion] Document disappeared before ingestion could finish', {
+                documentId: document._id.toString(),
+                error: error.message
+            });
+            await documentIngestionCheckpointRepository.deleteByDocument(document._id).catch(() => null);
+            return null;
+        }
+
         logger.error('[Ingestion] Document ingestion failed', {
             documentId: document._id.toString(),
             error: error.message

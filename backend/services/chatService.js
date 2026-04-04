@@ -536,6 +536,8 @@ export const chatWithDocuments = async ({
     });
 
     if (matchedConcepts.length) {
+        const conceptIds = matchedConcepts.map((concept) => concept._id);
+
         await recordLearningInteraction({
             userId,
             documentId: documentIds[0],

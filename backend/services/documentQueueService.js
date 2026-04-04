@@ -4,6 +4,9 @@ import { ingestDocument } from './documentIngestionService.js';
 import { logger } from '../lib/logger.js';
 import { generateRoadmap } from './roadmapService.js';
 
+const isMissingDocumentError = (error) => error?.name === 'DocumentNotFoundError'
+    || /No document found for query/i.test(`${error?.message || ''}`);
+
 class DocumentProcessingQueue {
     constructor(maxConcurrent = env.ingestionWorkerConcurrency || 2) {
         this.queue = [];
@@ -40,7 +43,14 @@ class DocumentProcessingQueue {
         if (!document) return;
 
         try {
-            await ingestDocument(document);
+            const result = await ingestDocument(document);
+            if (result === null) {
+                logger.warn('[DocumentQueue] Stopped processing because the document no longer exists', {
+                    documentId: document._id.toString()
+                });
+                return;
+            }
+
             try {
                 await generateRoadmap(document.user, document._id, 'background-worker-ingestion');
             } catch (roadmapError) {
@@ -51,6 +61,14 @@ class DocumentProcessingQueue {
             }
 
         } catch (error) {
+            if (isMissingDocumentError(error)) {
+                logger.warn('[DocumentQueue] Skipping missing document during background processing', {
+                    documentId: `${documentId}`,
+                    error: error.message
+                });
+                return;
+            }
+
             document.ingestionStatus = 'failed';
             document.ingestionError = `Extraction/processing failed: ${error.message}`;
             await documentRepository.save(document);

@@ -16,7 +16,7 @@ export const documentIngestionCheckpointRepository = {
         },
         {
             upsert: true,
-            new: true
+            returnDocument: 'after'
         }
     ),
     markCompleted: (documentId, patch = {}) => DocumentIngestionCheckpoint.findOneAndUpdate(
@@ -29,7 +29,7 @@ export const documentIngestionCheckpointRepository = {
                 ...patch
             }
         },
-        { new: true }
+        { returnDocument: 'after' }
     ),
     markFailed: (documentId, errorMessage, patch = {}) => DocumentIngestionCheckpoint.findOneAndUpdate(
         { document: documentId },
@@ -41,7 +41,7 @@ export const documentIngestionCheckpointRepository = {
                 ...patch
             }
         },
-        { new: true }
+        { returnDocument: 'after' }
     ),
     deleteByDocument: (documentId) => DocumentIngestionCheckpoint.deleteOne({ document: documentId })
 };
