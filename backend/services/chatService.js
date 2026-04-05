@@ -3,21 +3,34 @@ import { env } from '../config/env.js';
 import { recordLearningInteraction } from './analyticsService.js';
 import { generateText } from './aiService.js';
 import { evaluateMathExpression, normalizePowerSyntax } from './mathEngineService.js';
-import { retrieveRelevantChunks } from './retrievalService.js';
 import { conceptRepository } from '../repositories/conceptRepository.js';
 import { updateConceptMastery } from './masteryService.js';
 import { logger } from '../lib/logger.js';
 import { AppError } from '../lib/errors.js';
-
-
+import { tutorOrchestrator } from './tutorOrchestratorService.js';
+import {
+    allowsGeneralFallback,
+    detectChatIntent,
+    isTaskIntent,
+    shouldReturnNotFound,
+    shouldUseOverviewContext
+} from './chatIntentService.js';
+import { buildRollingSummary, mergeConversationHistory } from './chatMemoryService.js';
+import { buildOptimisedContext } from './tokenOptimisationService.js';
+import { generateCacheKey, getCachedResponse, setCachedResponse } from './aiCacheService.js';
 
 const NOT_FOUND_MESSAGE = 'Information not found in uploaded materials.';
-const GENERAL_FALLBACK_THRESHOLD = 0.23;
-
 
 async function maybeUpdateRollingSummary({ chatSession }) {
-    // Disabled: message schema does not support a third role type for persisted summaries.
-    // Keeping this as a no-op avoids intermittent ChatHistory validation failures.
+    if (!chatSession) {
+        return chatSession;
+    }
+
+    chatSession.rollingSummary = buildRollingSummary({
+        existingSummary: chatSession.rollingSummary,
+        messages: chatSession.messages || []
+    });
+    chatSession.rollingSummaryUpdatedAt = new Date();
     return chatSession;
 }
 const LOW_VALUE_PATTERNS = [
@@ -42,8 +55,6 @@ const isCapabilityIntent = (message = '') => /(what can you do|can you help|are 
 const isDefinitionStyleIntent = (message = '') => /^(what is|who is|define|meaning of|explain|tell me about)\b/i.test(normalizeText(message));
 const isLikelyGeneralIntent = (message = '') => /(how are you|who are you|tell me a joke|weather|news|time|date)/i.test(message) || isCapabilityIntent(message) || /\b\d+\s*[\+\-\*\/]\s*\d+\b/.test(message) || /\b\d+\s*(to the power|power)\s*\d+\b/i.test(message) || /\b\d+\s*\*\*\s*\d+\b/.test(message);
 const isExplicitGeneralIntent = (message = '') => /(general question|not from (the )?(document|pdf|book)|off[- ]?topic|just chat|casual chat|without document|in general)\b/i.test(normalizeText(message));
-const isLikelyDocIntent = (message = '') => /\b(doc|document|pdf|book|chapter|section|uploaded|material|notes)\b|from this|according to|summarize|summary|flashcard|quiz|proof|equivalence|logic|quantifier|normal form|xor|biconditional|conditional|de morgan|forall|exists|⊕|∀|∃|¬|∧|∨|→|↔/i.test(message || '');
-const isOverviewIntent = (message = '') => /(what (math|main|major|core)? topics|what does (this|the) (book|document|doc|pdf|chapter) cover|which topics|topics covered|table of contents|contents|syllabus|chapter overview|give me the topics|what are the topics|overview of the book|summari[sz]e( this| the (book|document|doc|pdf|chapter))?|study plan|roadmap|how should i study|plan for the whole book|prepare a study plan|what('?s| is) (this|the)? ?(doc|document|pdf|book|chapter) (mainly )?about|what (this|the)? ?(doc|document|pdf|book|chapter) is about|tell me what (this|the)? ?(doc|document|pdf|book|chapter) is about|can you tell me what (this|the)? ?(doc|document|pdf|book|chapter) is about|about this (doc|document|pdf|book|chapter))/i.test(normalizeText(message));
 
 const detectReplyStyle = (message = '') => {
     if (/[\u0900-\u097f]/.test(message)) {
@@ -166,62 +177,6 @@ const buildOverviewContext = (documents = [], concepts = [], message = '') => {
     };
 };
 
-const buildTutorPrompt = ({
-    documentTitles,
-    message,
-    chunks,
-    history,
-    replyStyle,
-    isOverviewQuery,
-    summaryContext,
-    conceptContext
-}) => {
-    const excerptContext = chunks.length
-        ? chunks.map((chunk, index) => (
-            `Source ${index + 1}\nDocument: ${chunk.documentTitle}\nSection: ${chunk.sectionTitle || 'Untitled Section'}\nExcerpt:\n${chunk.content}`
-        )).join('\n\n')
-        : 'No excerpt retrieval was strong enough for this question.';
-
-    const memory = history
-        .slice(-6)
-        .map((item) => `${item.role.toUpperCase()}: ${item.content}`)
-        .join('\n');
-
-    return `You are a study assistant answering strictly from uploaded materials.
-Available uploaded materials:
-${documentTitles.map((title) => `- ${title}`).join('\n')}
-
-Rules:
-- Use only the uploaded materials, including retrieved excerpts, document summaries, and extracted concept lists.
-- If the answer is not supported by those materials, reply with exactly: "${NOT_FOUND_MESSAGE}"
-- Do not answer from general knowledge.
-- Keep the answer concise and study-focused.
-- Do NOT include a "Sources:" line in the response body.
-- Provide clean final answer text only.
-- For evaluative questions (e.g., candidate quality from a resume), infer only from provided excerpts and explicitly mention limits/assumptions.
-- Treat retrieved excerpts as definition/law/evidence units and synthesize a direct final answer.
-- For symbolic logic, map operators while reasoning: ⊕ (xor), ∀ (for all), ∃ (there exists), ¬ (not), ∧ (and), ∨ (or), → (implies), ↔ (iff).
-- ${buildStyleInstruction(replyStyle)}
-- Match the user's tone. If the question sounds formal or evaluative, be professional. If it sounds casual, be conversational.
-${isOverviewQuery ? '- This is a broad overview question. Use the document-level overview and concept list to cover the breadth of the material, not just one excerpt.' : ''}
-${/study plan|roadmap|how should i study|plan for the whole book|prepare a study plan/i.test(normalizeText(message)) ? '- The user is asking for a study plan. Organize the answer as a practical sequence of study phases with topic grouping, suggested order, and what to practice after each phase.' : ''}
-
-Conversation memory:
-${memory || 'None'}
-
-Document-level overview:
-${summaryContext || 'No saved document summary yet.'}
-
-Relevant concepts:
-${conceptContext || 'No concept list available.'}
-
-Retrieved excerpts:
-${excerptContext}
-
-Student question:
-${message}`;
-};
-
 const stripModelSourcesLine = (text = '') => text
     .split('\n')
     .filter((line) => !/^sources?\s*:/i.test(line.trim()))
@@ -242,7 +197,30 @@ const buildDebugMeta = ({ intent, usedRetrieval, fallbackUsed }) => ({
     fallback_used: Boolean(fallbackUsed)
 });
 
-const uniqueCitations = (chunks) => {
+const findChatSession = async ({ documentIds, userId }) => {
+    const ids = documentIds.map((documentId) => `${documentId}`);
+    let chatSession = ids.length === 1
+        ? await ChatHistory.findOne({ document: ids[0], user: userId })
+        : await ChatHistory.findOne({ document: null, user: userId, sourceDocuments: { $all: ids } });
+
+    if (chatSession && ids.length > 1 && (chatSession.sourceDocuments?.length || 0) !== ids.length) {
+        chatSession = null;
+    }
+
+    return chatSession;
+};
+
+const buildDocumentCacheFingerprint = (documents = []) => documents
+    .map((document) => ({
+        id: `${document._id}`,
+        ingestionStatus: document.ingestionStatus || '',
+        chunkCount: Number(document.chunkCount || 0),
+        summaryUpdatedAt: document.summaryUpdatedAt ? new Date(document.summaryUpdatedAt).toISOString() : '',
+        updatedAt: document.updatedAt ? new Date(document.updatedAt).toISOString() : ''
+    }))
+    .sort((left, right) => left.id.localeCompare(right.id));
+
+const uniqueCitations = (chunks, max = 2) => {
     const seen = new Set();
     return chunks
         .map(toCitation)
@@ -254,7 +232,7 @@ const uniqueCitations = (chunks) => {
             seen.add(key);
             return true;
         })
-        .slice(0, 2);
+        .slice(0, max);
 };
 
 const persistChatExchange = async ({
@@ -266,13 +244,7 @@ const persistChatExchange = async ({
     matchedConcepts = [],
     citations = []
 }) => {
-    let chatSession = documentIds.length === 1
-        ? await ChatHistory.findOne({ document: documentIds[0], user: userId })
-        : await ChatHistory.findOne({ document: null, user: userId, sourceDocuments: { $all: documentIds } });
-
-    if (chatSession && documentIds.length > 1 && (chatSession.sourceDocuments?.length || 0) !== documentIds.length) {
-        chatSession = null;
-    }
+    let chatSession = await findChatSession({ documentIds, userId });
     if (!chatSession) {
         chatSession = new ChatHistory({
             document: documentIds.length === 1 ? documentIds[0] : null,
@@ -300,7 +272,6 @@ const persistChatExchange = async ({
         citations
     });
 
-    await chatSession.save();
     await maybeUpdateRollingSummary({ chatSession });
     await chatSession.save();
 };
@@ -312,8 +283,15 @@ export const chatWithDocuments = async ({
     history = []
 }) => {
     const documentIds = documents.map((document) => document._id);
-    const documentTitles = documents.map((document) => document.title || document.originalName);
     const hasDocumentContext = documentIds.length > 0;
+    const existingChatSession = await findChatSession({ documentIds, userId });
+    const mergedHistory = mergeConversationHistory({
+        persistedMessages: (existingChatSession?.messages || []).slice(-8).map((item) => ({
+            role: item.role,
+            content: item.content
+        })),
+        requestHistory: history
+    });
     const numericExpression = detectNumericExpression(message);
     if (numericExpression) {
         return {
@@ -325,16 +303,14 @@ export const chatWithDocuments = async ({
         };
     }
 
+    const intentInfo = detectChatIntent({
+        message,
+        hasDocumentContext
+    });
     const replyStyle = detectReplyStyle(message);
-    let intent = 'document';
-    if (isPureGreetingIntent(message)) {
-        intent = 'social';
-    } else if (isExplicitGeneralIntent(message) && !isLikelyDocIntent(message)) {
-        intent = 'general';
-    } else if (isCapabilityIntent(message)) {
-        intent = 'general';
-    } else if (!hasDocumentContext && isLikelyGeneralIntent(message) && !isLikelyDocIntent(message)) {
-        intent = 'general';
+    let intent = intentInfo.intentClass;
+    if (isDocumentEvaluationIntent(message)) {
+        intent = 'factual_doc_qa';
     }
 
     if (intent === 'social') {
@@ -356,7 +332,12 @@ export const chatWithDocuments = async ({
         };
     }
 
-    if (intent === 'general') {
+    const shouldUseGeneralChat = intent === 'generic_chat'
+        || intent === 'general'
+        || (!hasDocumentContext && allowsGeneralFallback(intent))
+        || (allowsGeneralFallback(intent) && !intentInfo.hasDocSignal && (isCapabilityIntent(message) || isExplicitGeneralIntent(message) || isLikelyGeneralIntent(message)));
+
+    if (shouldUseGeneralChat) {
         try {
             const generalReply = await generateText(buildGeneralPrompt({ message, replyStyle }), { maxTokens: 220 });
             const reply = stripModelSourcesLine(generalReply);
@@ -381,17 +362,7 @@ export const chatWithDocuments = async ({
         }
     }
 
-    const rawChunks = await retrieveRelevantChunks({
-        userId,
-        documentIds,
-        query: message
-    });
-    const chunks = rawChunks.filter((chunk) => !isLowValueChunk(chunk));
-    const isOverviewQuery = isOverviewIntent(message);
-
     const hasProcessingDocs = documents.some(doc => ['queued', 'extracting', 'processing', 'embedding_partial'].includes(doc.ingestionStatus));
-    
-    // Check if documents are actually processed and have content
     const totalChunkCount = documents.reduce((sum, doc) => sum + (doc.chunkCount || 0), 0);
     if (totalChunkCount === 0 && !hasProcessingDocs) {
         return {
@@ -403,7 +374,7 @@ export const chatWithDocuments = async ({
         };
     }
 
-    if (hasProcessingDocs && chunks.length < 2) {
+    if (hasProcessingDocs && totalChunkCount < 2) {
         return {
             status: "DOCUMENT_STILL_PROCESSING",
             reply: "The document is still being analyzed in the background. Please wait a moment while I finish extracting the relevant sections.",
@@ -414,104 +385,51 @@ export const chatWithDocuments = async ({
         };
     }
 
-    const { buildOptimisedContext, pruneRetrievedChunks } = await import('./tokenOptimisationService.js');
-    const { generateCacheKey, getCachedResponse, setCachedResponse } = await import('./aiCacheService.js');
-    const { aiQueueService } = await import('./aiQueueService.js');
-
     const concepts = await conceptRepository.listByDocuments(documentIds);
-    const chunkMatchedConcepts = concepts
-        .filter((concept) => chunks.some((chunk) => concept.chunkRefs.some((chunkId) => chunkId.toString() === chunk._id.toString())))
-        .slice(0, 5);
-    const { summaryContext, conceptContext } = buildOverviewContext(documents, concepts, message);
-    const canAnswerFromOverviewContext = isOverviewQuery && Boolean(summaryContext || conceptContext);
-    const bestRelevance = chunks.reduce((best, chunk) => Math.max(best, Number(chunk.rerankScore || chunk.semanticScore || chunk.lexicalScore || 0)), 0);
-    const shouldFallbackToGeneralKnowledge = !isLikelyDocIntent(message)
-        && !isDocumentEvaluationIntent(message)
-        && (isCapabilityIntent(message) || isDefinitionStyleIntent(message) || isLikelyGeneralIntent(message))
-        && !canAnswerFromOverviewContext
-        && bestRelevance < GENERAL_FALLBACK_THRESHOLD;
-
-    if (shouldFallbackToGeneralKnowledge) {
-        try {
-            const generalReply = await generateText(buildGeneralPrompt({ message, replyStyle }), { maxTokens: 260 });
-            const reply = stripModelSourcesLine(generalReply);
-            await persistChatExchange({
-                documentIds,
-                userId,
-                message,
-                reply
-            });
-            return {
-                reply,
-                retrievedChunks: [],
-                citations: [],
-                concepts: [],
-                debug: buildDebugMeta({ intent: 'general-fallback', usedRetrieval: true, fallbackUsed: true })
-            };
-        } catch (error) {
-            logger.warn('[Chat] General fallback generation failed after low-relevance retrieval', {
-                error: error.message
-            });
-        }
-    }
-
-    if (!chunks.length && !isDocumentEvaluationIntent(message) && !canAnswerFromOverviewContext) {
-        await persistChatExchange({
-            documentIds,
-            userId,
-            message,
-            reply: NOT_FOUND_MESSAGE
-        });
-        return {
-            reply: NOT_FOUND_MESSAGE,
-            retrievedChunks: [],
-            citations: [],
-            concepts: [],
-            debug: buildDebugMeta({ intent, usedRetrieval: true, fallbackUsed: false })
-        };
-    }
-
-    const matchedConcepts = [...new Map(
-        [
-            ...chunkMatchedConcepts,
-            ...concepts
-                .map((concept) => ({ concept, score: scoreConceptMatch(concept, message) }))
-                .filter(({ score }) => score >= 2.5)
-                .sort((left, right) => right.score - left.score)
-                .map(({ concept }) => concept)
-                .slice(0, isOverviewQuery ? 8 : 4)
-        ].map((concept) => [concept._id.toString(), concept])
-    ).values()].slice(0, isOverviewQuery ? 10 : 5);
-
-    // [OPTIMISATION] Context Saftey Guard 
-    const prunedChunks = pruneRetrievedChunks(chunks);
-    const citations = uniqueCitations(prunedChunks);
-
-    // [OPTIMISATION] Token compression
-    const compressedHistory = buildOptimisedContext(history);
-    const prompt = buildTutorPrompt({
-        documentTitles,
-        message,
-        chunks: prunedChunks,
-        history: history.slice(-6),
+    const overviewContext = buildOverviewContext(documents, concepts, intentInfo.normalizedMessage);
+    const compressedHistory = buildOptimisedContext(mergedHistory);
+    const primaryModel = env.aiPrimaryProvider === 'groq' ? env.groqChatModel : env.geminiChatModel;
+    const cacheKey = generateCacheKey({
+        version: 'chat-v3',
+        prompt: intentInfo.normalizedMessage,
+        userId: `${userId}`,
+        documentIds: documentIds.map((documentId) => `${documentId}`).sort(),
+        provider: env.aiPrimaryProvider,
+        fallbackProvider: env.aiFallbackProvider,
+        model: primaryModel,
+        intentClass: intent,
+        questionStyle: intentInfo.questionStyle,
+        requestedQuestionCount: intentInfo.requestedQuestionCount,
         replyStyle,
-        isOverviewQuery,
-        summaryContext,
-        conceptContext
+        documents: buildDocumentCacheFingerprint(documents),
+        rollingSummary: existingChatSession?.rollingSummary || '',
+        history: compressedHistory
     });
-    
-    // [OPTIMISATION] Response Caching
-    const cacheKey = generateCacheKey(message, compressedHistory);
-    let reply = await getCachedResponse(cacheKey);
 
-    if (!reply) {
+    const cachedPayload = await getCachedResponse(cacheKey);
+    let orchestrationResult = typeof cachedPayload === 'string'
+        ? { reply: cachedPayload, retrievedChunks: [], citations: [] }
+        : cachedPayload;
+
+    if (!orchestrationResult) {
         try {
-            // [OPTIMISATION] Queue & Rate limiter
-            reply = await aiQueueService.enqueue(
-                () => generateText(prompt, { maxTokens: isOverviewQuery ? Math.min(560, Math.max(env.chatMaxOutputTokens, 500)) : env.chatMaxOutputTokens }),
-                18000
-            );
-            reply = stripModelSourcesLine(reply);
+            orchestrationResult = await tutorOrchestrator.run({
+                userId,
+                documents,
+                message,
+                history: mergedHistory,
+                rollingSummary: existingChatSession?.rollingSummary || '',
+                overviewContext: shouldUseOverviewContext(intent) ? overviewContext : null,
+                intentClass: intent,
+                taskHints: {
+                    normalizedMessage: intentInfo.normalizedMessage,
+                    requestedQuestionCount: intentInfo.requestedQuestionCount,
+                    questionStyle: intentInfo.questionStyle,
+                    wantsAnswerKey: intentInfo.wantsAnswerKey,
+                    replyStyle
+                },
+                isLowValueChunk
+            });
         } catch (error) {
             throw new AppError('Document chat generation failed', error.statusCode || 502, 'DOCUMENT_CHAT_FAILED', {
                 stage: 'document-chat',
@@ -520,23 +438,43 @@ export const chatWithDocuments = async ({
             });
         }
 
-        // Store cache in background
-        setCachedResponse(cacheKey, reply).catch((error) => {
+        setCachedResponse(cacheKey, orchestrationResult).catch((error) => {
             logger.warn('[Chat] Cache write skipped', { error: error.message });
         });
     }
+
+    const reply = stripModelSourcesLine(orchestrationResult?.reply || '');
+    const retrievedChunks = (orchestrationResult?.retrievedChunks || []).map((chunk) => ({
+        _id: chunk.id || chunk._id,
+        document: chunk.documentId || chunk.document,
+        documentTitle: chunk.documentTitle,
+        sectionTitle: chunk.sectionTitle || 'Untitled Section',
+        chunkIndex: chunk.chunkIndex || 0,
+        content: chunk.content || '',
+        rerankScore: chunk.score || 0
+    }));
+    const citations = (orchestrationResult?.citations?.length
+        ? orchestrationResult.citations
+        : uniqueCitations(retrievedChunks, isTaskIntent(intent) ? 4 : 2));
+    const matchedConcepts = [...new Map(
+        concepts
+            .map((concept) => ({ concept, score: scoreConceptMatch(concept, intentInfo.normalizedMessage) }))
+            .filter(({ score }) => score >= (isTaskIntent(intent) ? 1.6 : 2.2))
+            .sort((left, right) => right.score - left.score)
+            .map(({ concept }) => [concept._id.toString(), concept])
+    ).values()].slice(0, shouldUseOverviewContext(intent) ? 8 : 5);
 
     await persistChatExchange({
         documentIds,
         userId,
         message,
         reply,
-        retrievedChunks: chunks,
+        retrievedChunks,
         matchedConcepts,
         citations
     });
 
-    if (matchedConcepts.length) {
+    if (matchedConcepts.length && retrievedChunks.length) {
         const conceptIds = matchedConcepts.map((concept) => concept._id);
 
         await recordLearningInteraction({
@@ -558,7 +496,7 @@ export const chatWithDocuments = async ({
 
     return {
         reply,
-        retrievedChunks: chunks.map((chunk) => ({
+        retrievedChunks: retrievedChunks.map((chunk) => ({
             id: chunk._id,
             content: chunk.content,
             score: chunk.rerankScore,
@@ -569,6 +507,10 @@ export const chatWithDocuments = async ({
         })),
         citations,
         concepts: matchedConcepts,
-        debug: buildDebugMeta({ intent, usedRetrieval: true, fallbackUsed: false })
+        debug: buildDebugMeta({
+            intent,
+            usedRetrieval: retrievedChunks.length > 0,
+            fallbackUsed: shouldReturnNotFound(intent) && !retrievedChunks.length
+        })
     };
 };

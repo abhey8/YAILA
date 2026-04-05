@@ -24,18 +24,28 @@ router.route('/chat/:id')
     .get(protect, getChatHistory);
 
 import { env } from '../config/env.js';
-import { embedTexts } from '../services/aiService.js';
+import { embedTexts, generateText } from '../services/aiService.js';
 
 router.get('/test', async (req, res) => {
     try {
-        const result = await embedTexts(["Test text 1", "Test text 2"]);
+        const [embeddingResult, generationResult] = await Promise.all([
+            embedTexts(["Test text 1", "Test text 2"]),
+            generateText('Reply with exactly OK.', { maxTokens: 12 })
+        ]);
         res.json({
             success: true,
             primaryProvider: env.aiPrimaryProvider,
             fallbackProvider: env.aiFallbackProvider,
             model: env.aiPrimaryProvider === 'groq' ? env.groqChatModel : env.geminiChatModel,
-            length: result.length,
-            sample: result[0]?.slice(0, 3) 
+            embeddings: {
+                ok: true,
+                length: embeddingResult.length,
+                sample: embeddingResult[0]?.slice(0, 3) || []
+            },
+            generation: {
+                ok: true,
+                sample: `${generationResult}`.trim().slice(0, 80)
+            }
         });
     } catch (e) {
         res.status(500).json({ success: false, error: e.message });

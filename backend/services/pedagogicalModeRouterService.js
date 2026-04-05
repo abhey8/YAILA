@@ -1,6 +1,5 @@
 import { env } from '../config/env.js';
-
-const normalizeText = (value = '') => value.toLowerCase().replace(/\s+/g, ' ').trim();
+import { detectChatIntent, normalizeChatText } from './chatIntentService.js';
 
 const MODE_PATTERNS = [
     {
@@ -17,7 +16,7 @@ const MODE_PATTERNS = [
     },
     {
         mode: 'question_generation',
-        pattern: /(generate|create|make).*(question|questions|quiz|mcq)|practice questions?/i
+        pattern: /(generate|create|make|ask|give|quiz|test).*(question|questions|quiz|mcq|viva)|practice questions?|\b(theory|viva|important)\s+questions?\b/i
     },
     {
         mode: 'comparison_of_concepts',
@@ -58,6 +57,15 @@ const modeConfig = (mode) => {
             ...base,
             finalContextSize: 3,
             rerankPoolSize: Math.max(12, base.rerankPoolSize - 2)
+        };
+    }
+
+    if (mode === 'question_generation') {
+        return {
+            ...base,
+            finalContextSize: 3,
+            rerankPoolSize: Math.max(10, base.rerankPoolSize - 4),
+            maxPerSection: 1
         };
     }
 
@@ -125,9 +133,18 @@ const modePromptBehavior = (mode) => {
 };
 
 export const routePedagogicalMode = ({ message = '', history = [] }) => {
-    const text = normalizeText(message);
+    const text = normalizeChatText(message);
+    const intent = detectChatIntent({ message, hasDocumentContext: true });
+    const intentModeMap = {
+        overview_summary: 'summarization',
+        study_guidance: 'summarization',
+        question_generation: 'question_generation',
+        transform_request: 'conceptual_explanation',
+        explanation: 'conceptual_explanation',
+        factual_doc_qa: 'conceptual_explanation'
+    };
     const matched = MODE_PATTERNS.find((entry) => entry.pattern.test(text));
-    const mode = matched?.mode || 'conceptual_explanation';
+    const mode = intentModeMap[intent.intentClass] || matched?.mode || 'conceptual_explanation';
 
     return {
         mode,
@@ -138,4 +155,3 @@ export const routePedagogicalMode = ({ message = '', history = [] }) => {
         historyDepth: Math.min(6, Math.max(2, history.length || 0))
     };
 };
-

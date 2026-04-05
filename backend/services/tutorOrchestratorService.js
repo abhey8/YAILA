@@ -13,6 +13,15 @@ const FAST_MODE_SWITCH_MS = 3500;
 const MEMORY_SIMILARITY_THRESHOLD = 0.18;
 const FAST_MODE_RETRIEVAL_LIMIT = 2;
 const normalizeText = (value = '') => `${value}`.toLowerCase().replace(/\s+/g, ' ').trim();
+const buildStyleInstruction = (replyStyle = 'english') => {
+    if (replyStyle === 'hindi') {
+        return 'Reply in Hindi.';
+    }
+    if (replyStyle === 'hinglish') {
+        return 'Reply in natural Hinglish (Roman Hindi + English mix).';
+    }
+    return 'Reply in English.';
+};
 
 const stripSourceLines = (text = '') => text
     .split('\n')
@@ -114,16 +123,20 @@ const trimToWords = (text = '', maxWords = 170) => {
 const retrieveSemanticMemory = async ({
     message,
     history = [],
+    rollingSummary = '',
     enabled = true,
     fastMode = false
 }) => {
 
     if (!enabled || fastMode || !Array.isArray(history) || history.length < 3) {
-        return [];
+        if (!enabled || fastMode || !rollingSummary) {
+            return [];
+        }
     }
 
-    // find latest rolling summary
-    const summaryEntry = [...history]
+    const summaryEntry = rollingSummary
+        ? { role: 'memory', content: rollingSummary }
+        : [...history]
         .reverse()
         .find(h => h.role === 'system_summary' && h.content);
 
@@ -157,10 +170,11 @@ const retrieveSemanticMemory = async ({
     }
 };
 
-const buildStructuredContext = ({ planner, chunks, memories = [], fastMode = false }) => {
+const buildStructuredContext = ({ planner, chunks, memories = [], overviewContext = null, fastMode = false }) => {
     const definitions = [];
     const reasoning = [];
     const support = [];
+    const overview = [];
     chunks = [...chunks].sort((a, b) => {
         const scoreA =
             (a.rerankScore || 0)
@@ -189,16 +203,26 @@ const buildStructuredContext = ({ planner, chunks, memories = [], fastMode = fal
     });
 
     const memoryLines = memories.map((item) => `[${item.role}] ${item.content}`);
+    if (overviewContext?.summaryContext) {
+        overview.push(`Document summary:\n${overviewContext.summaryContext}`);
+    }
+    if (overviewContext?.conceptContext) {
+        overview.push(`Key concepts:\n${overviewContext.conceptContext}`);
+    }
 
     return {
         sections: planner.answerStructureSections || [],
         definitions,
         reasoning,
         support,
+        overview,
         memories: memoryLines,
         promptContext: [
             'Planned answer sections:',
             ...(planner.answerStructureSections || []).map((s) => `- ${s}`),
+            '',
+            'Document overview:',
+            ...(overview.length ? overview : ['- None']),
             '',
             'Definitions:',
             ...(definitions.length ? definitions : ['- None']),
@@ -256,7 +280,37 @@ const verifyAnswer = async ({ reply = '', chunks = [] }) => {
     }
 };
 
-const buildReasoningPrompt = ({ documents = [], message, modePlan, planner, contextBlock, fastMode = false }) => {
+const buildReasoningPrompt = ({
+    documents = [],
+    message,
+    modePlan,
+    planner,
+    contextBlock,
+    fastMode = false,
+    intentClass = 'factual_doc_qa',
+    taskHints = {}
+}) => {
+    const requestedCount = Math.min(10, Math.max(3, Number(taskHints.requestedQuestionCount) || 5));
+    const questionStyle = taskHints.questionStyle || 'general';
+    const intentInstructions = [];
+
+    if (modePlan.mode === 'question_generation') {
+        intentInstructions.push(`- Generate ${requestedCount} grounded ${questionStyle === 'general' ? '' : `${questionStyle} `}questions from the uploaded material.`);
+        intentInstructions.push('- Questions should be clear, numbered, and directly based on the evidence or document overview.');
+        intentInstructions.push('- Do not say "Information not found..." unless no document overview and no evidence are available.');
+        intentInstructions.push(taskHints.wantsAnswerKey
+            ? '- Include a concise answer key after the questions.'
+            : '- Do not include an answer key unless the user explicitly asks for answers.');
+    } else if (intentClass === 'study_guidance' || intentClass === 'overview_summary') {
+        intentInstructions.push('- Give a practical study-focused answer using the broad document overview and strongest evidence.');
+        intentInstructions.push('- Organize the answer so the student knows what matters most and what to study first.');
+    } else if (intentClass === 'transform_request') {
+        intentInstructions.push('- Treat the request as a document-derived transformation task, not a strict fact lookup.');
+        intentInstructions.push('- Use the uploaded materials to reshape the information into the requested format.');
+    } else {
+        intentInstructions.push('- If evidence is genuinely insufficient for a factual answer, say "Information not found in uploaded materials."');
+    }
+
     return `You are an expert AI tutor. Answer using only provided evidence.
 Tutor mode: ${modePlan.mode}
 Reasoning depth: ${planner.reasoningDepth}
@@ -274,14 +328,45 @@ Instructions:
 - Follow planned sections exactly.
 - Keep response concise but instructional.
 - Do not fabricate facts beyond evidence.
-- If evidence is insufficient, state what is missing.
+- ${buildStyleInstruction(taskHints.replyStyle)}
+${intentInstructions.join('\n')}
 
 User question:
 ${message}`;
 };
 
-const buildFallbackReply = ({ message, chunks = [] }) => {
+const buildFallbackReply = ({ message, chunks = [], intentClass = 'factual_doc_qa', overviewContext = null, taskHints = {} }) => {
     if (!chunks.length) {
+        const overviewLines = [
+            overviewContext?.summaryContext,
+            overviewContext?.conceptContext
+        ].filter(Boolean).join('\n');
+
+        if (overviewLines && ['question_generation', 'study_guidance', 'overview_summary', 'transform_request'].includes(intentClass)) {
+            if (intentClass === 'question_generation') {
+                const count = Math.min(10, Math.max(3, Number(taskHints.requestedQuestionCount) || 5));
+                const lines = overviewLines
+                    .split('\n')
+                    .map((line) => line.replace(/^- /, '').trim())
+                    .filter(Boolean)
+                    .slice(0, count);
+                return lines.map((line, index) => {
+                    const stem = line.replace(/:.*$/, '').trim();
+                    if (taskHints.questionStyle === 'viva') {
+                        return `${index + 1}. In a viva, how would you explain ${stem}?`;
+                    }
+                    if (taskHints.questionStyle === 'theory') {
+                        return `${index + 1}. Explain the theory behind ${stem}.`;
+                    }
+                    return `${index + 1}. What should you understand about ${stem}?`;
+                }).join('\n');
+            }
+
+            return overviewContext.summaryContext
+                || overviewContext.conceptContext
+                || 'I could not find strong local evidence, but the document overview is available.';
+        }
+
         return 'Information not found in uploaded materials.';
     }
     const excerpt = trimToWords(chunks[0].content || '', 90);
@@ -294,6 +379,10 @@ export const tutorOrchestrator = {
         documents = [],
         message = '',
         history = [],
+        rollingSummary = '',
+        overviewContext = null,
+        intentClass = 'factual_doc_qa',
+        taskHints = {},
         isLowValueChunk = null,
         enableSemanticMemory = true
     }) {
@@ -304,16 +393,17 @@ export const tutorOrchestrator = {
         };
 
         try {
+        const routingMessage = taskHints.normalizedMessage || message;
             // Stage 1: pedagogical mode routing
-            const modePlan = routePedagogicalMode({ message, history });
+            const modePlan = routePedagogicalMode({ message: routingMessage, history });
             mark('mode_routing');
 
             // Stage 2: answer planning
-            const planner = planAnswer({ message, modePlan });
+            const planner = planAnswer({ message: routingMessage, modePlan });
             mark('answer_planning');
 
             // Stage 3: query rewriting
-            const rewritePlan = rewriteQuery(message);
+            const rewritePlan = rewriteQuery(routingMessage);
             mark('query_rewriting');
 
             // Stage 4 + 5: hybrid retrieval + rerank/diversity filtering (inside retrieval service)
@@ -343,6 +433,7 @@ export const tutorOrchestrator = {
             const semanticMemory = await retrieveSemanticMemory({
                 message,
                 history,
+                rollingSummary,
                 enabled: enableSemanticMemory && env.intelligenceV2Enabled,
                 fastMode
             });
@@ -354,9 +445,31 @@ export const tutorOrchestrator = {
                 planner,
                 chunks,
                 memories: semanticMemory,
+                overviewContext,
                 fastMode
             });
             mark('context_builder');
+
+            const hasOverviewSupport = Boolean(overviewContext?.summaryContext || overviewContext?.conceptContext);
+            if (!chunks.length && !hasOverviewSupport && ['factual_doc_qa', 'explanation'].includes(intentClass)) {
+                return {
+                    reply: 'Information not found in uploaded materials.',
+                    retrievedChunks: [],
+                    citations: [],
+                    mode: modePlan.mode,
+                    planning: planner,
+                    verifier: {
+                        grounding_score: 0,
+                        evidence_coverage_ratio: 0,
+                        unsupported_claim_flag: true
+                    },
+                    orchestration: {
+                        fastMode,
+                        rewriteQueries: rewritePlan.expandedQueries.slice(0, 2),
+                        stageTiming
+                    }
+                };
+            }
 
             // Stage 8: reasoning generation call
             const prompt = buildReasoningPrompt({
@@ -365,7 +478,9 @@ export const tutorOrchestrator = {
                 modePlan,
                 planner,
                 contextBlock: contextBuilt.promptContext,
-                fastMode
+                fastMode,
+                intentClass,
+                taskHints
             });
             const selectedModel = routeAIRequest(prompt, history);
             let reply = await aiQueueService.enqueue(
@@ -388,7 +503,7 @@ export const tutorOrchestrator = {
 if (!fastMode && verifier.unsupported_claim_flag) {
 
     // SECOND-CHANCE RETRIEVAL
-    const secondQuery = rewritePlan.canonical + " detailed explanation";
+        const secondQuery = rewritePlan.canonical + " detailed explanation";
 
     const secondChunks = await retrieveRelevantChunks({
         userId,
@@ -404,6 +519,7 @@ if (!fastMode && verifier.unsupported_claim_flag) {
             planner,
             chunks: secondChunks,
             memories: semanticMemory,
+            overviewContext,
             fastMode
         });
 
@@ -413,7 +529,9 @@ if (!fastMode && verifier.unsupported_claim_flag) {
             modePlan,
             planner,
             contextBlock: secondContext.promptContext,
-            fastMode
+            fastMode,
+            intentClass,
+            taskHints
         });
 
         let retryReply = await aiQueueService.enqueue(
@@ -441,7 +559,7 @@ if (!fastMode && verifier.unsupported_claim_flag) {
 
             // Stage 10: fallback / fast mode logic
             if (!reply || Date.now() - startedAt > MAX_PIPELINE_MS) {
-                reply = buildFallbackReply({ message, chunks });
+                reply = buildFallbackReply({ message, chunks, intentClass, overviewContext, taskHints });
             }
             mark('finalize');
 

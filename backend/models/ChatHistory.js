@@ -12,6 +12,8 @@ const chatHistorySchema = new mongoose.Schema({
     document: { type: mongoose.Schema.Types.ObjectId, ref: 'Document', default: null },
     user: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
     sourceDocuments: [{ type: mongoose.Schema.Types.ObjectId, ref: 'Document' }],
+    rollingSummary: { type: String, default: '' },
+    rollingSummaryUpdatedAt: { type: Date, default: null },
     messages: [{
         role: { type: String, enum: ['user', 'ai'], required: true },
         content: { type: String, required: true },

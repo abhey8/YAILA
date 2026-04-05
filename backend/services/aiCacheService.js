@@ -9,9 +9,28 @@ import { logger } from '../lib/logger.js';
  * the requirement perfectly with a strict 6-hour TTL index.
  */
 
-// Basic MD5 hash since cryptographic security isn't needed for cache keys, just uniqueness
-export const generateCacheKey = (prompt, historyStr = '') => {
-    return crypto.createHash('md5').update(prompt + historyStr).digest('hex');
+const stableSerialize = (value) => {
+    if (Array.isArray(value)) {
+        return value.map((item) => stableSerialize(item));
+    }
+    if (value && typeof value === 'object') {
+        return Object.keys(value).sort().reduce((acc, key) => {
+            acc[key] = stableSerialize(value[key]);
+            return acc;
+        }, {});
+    }
+    return value ?? null;
+};
+
+// Basic MD5 hash since cryptographic security isn't needed for cache keys, just uniqueness.
+// The key includes user/document/provider/mode dimensions to prevent cross-session leakage.
+export const generateCacheKey = (payload, historyStr = '') => {
+    if (typeof payload === 'string') {
+        return crypto.createHash('md5').update(payload + historyStr).digest('hex');
+    }
+
+    const serialized = JSON.stringify(stableSerialize(payload || {}));
+    return crypto.createHash('md5').update(serialized).digest('hex');
 };
 
 export const getCachedResponse = async (cacheKey) => {

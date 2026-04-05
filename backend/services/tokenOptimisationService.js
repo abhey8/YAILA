@@ -1,4 +1,3 @@
-import { env } from '../config/env.js';
 import { logger } from '../lib/logger.js';
 
 /**
@@ -15,8 +14,8 @@ const MAX_WORD_COUNT = 800; // Arbitrary high fallback string length roughly equ
  * and removing verbose system messages or extremely lengthy user inputs.
  */
 export const buildOptimisedContext = (historyArray = []) => {
-    if (!env.aiSummaryEnabled || !historyArray || historyArray.length === 0) {
-        return historyArray.map(item => `${item.role.toUpperCase()}: ${item.content}`).join('\n');
+    if (!historyArray || historyArray.length === 0) {
+        return '';
     }
 
     // Sort to keep newest items and map to exact string
