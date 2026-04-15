@@ -1,42 +1,228 @@
 # YAILA
 
-YAILA is a MERN-based AI learning platform for document chat, summaries, flashcards, quizzes, knowledge graphs, and learning roadmaps.
+YAILA is an AI learning workspace for your own study documents.
 
-This repo now includes a production-ready large-document ingestion and retrieval upgrade:
+You upload a PDF, the backend processes it into searchable chunks, and then you can study from the same material using chat, summary, flashcards, quiz, concept graph, and roadmap views.
 
-- page-batched PDF parsing instead of full-document extraction first
-- resumable ingestion with checkpoints
-- batched embeddings and batched chunk writes
-- optional Endee vector database integration for semantic search
-- Mongo-backed fallback vector search for backward compatibility
-- metadata-aware retrieval with document/page/section traceability
-- a retrieval API for semantic search and RAG context inspection
+Demo link: _I will add this later._
 
-## Architecture
+## What this project does
+
+- Upload and process documents
+- Ask document-grounded questions in AI Chat
+- Generate and read structured summaries
+- Practice with flashcards and quizzes
+- Explore concept relationships in a knowledge graph
+- Follow a generated learning roadmap
+- Track activity on dashboard/profile pages
+
+## Product tour
+
+### Login
+
+![Login](./frontend/public/readme/login.png)
+
+### Dashboard
+
+![Dashboard](./frontend/public/readme/dashboard.png)
+
+### Documents
+
+![Documents](./frontend/public/readme/documents.png)
+
+### Upload modal
+
+![Upload Modal](./frontend/public/readme/upload-modal.png)
+
+### Document workspace: AI Chat
+
+![AI Chat](./frontend/public/readme/chat.png)
+
+### Document workspace: Summary
+
+![Summary](./frontend/public/readme/summary.png)
+
+### Document workspace: Flashcards
+
+![Flashcards](./frontend/public/readme/flashcards.png)
+
+### Document workspace: Quiz
+
+![Quiz](./frontend/public/readme/quiz.png)
+
+### Knowledge Graph
+
+![Knowledge Graph](./frontend/public/readme/knowledge-graph.png)
+
+### Learning Roadmap
+
+![Roadmap](./frontend/public/readme/roadmap.png)
+
+### Profile
+
+![Profile](./frontend/public/readme/profile.png)
+
+## Architecture (UML)
+
+This project is React + Express + MongoDB, with configurable AI/vector providers.
 
 ```mermaid
 flowchart LR
-    A["Uploaded PDF/Image"] --> B["Document Queue"]
-    B --> C["Streaming Parser / OCR"]
-    C --> D["Chunk Session"]
-    D --> E["Embedding Batches"]
-    E --> F["Chunk Store (Mongo)"]
-    E --> G["Vector Store (Mongo or Endee)"]
-    F --> H["Knowledge Graph / Roadmap"]
-    F --> I["Summary / Quiz / Flashcards"]
-    G --> J["Semantic Retrieval"]
-    F --> J
-    J --> K["Chat / RAG Context Assembly"]
+    U[User] --> FE[Frontend (React + Vite)]
+    FE --> API[Backend API (Express)]
+
+    API --> DB[(MongoDB)]
+    API --> LLM[LLM Provider (Groq/Gemini)]
+    API --> VEC[Vector Store (Mongo/Endee)]
+
+    API --> INGEST[Ingestion Service]
+    INGEST --> PARSER[PDF Parser]
+    PARSER --> CHUNKER[Chunking]
+    CHUNKER --> EMBED[Embeddings]
+    EMBED --> DB
+    EMBED --> VEC
+
+    API --> CHAT[Chat + Tutor Orchestrator]
+    CHAT --> RETRIEVE[Retrieval Service]
+    RETRIEVE --> DB
+    RETRIEVE --> VEC
+
+    API --> SUMMARY[Summary Service]
+    API --> FLASH[Flashcard Service]
+    API --> QUIZ[Quiz Service]
+    API --> GRAPH[Knowledge Graph Service]
+    API --> ROADMAP[Roadmap Service]
 ```
 
-## Repo layout
+## UML: document ingestion sequence
 
-- `backend`
-- `frontend`
+```mermaid
+sequenceDiagram
+    autonumber
+    actor User
+    participant FE as Frontend
+    participant API as Backend API
+    participant Q as Queue
+    participant P as Parser
+    participant C as Chunker
+    participant E as Embedder
+    participant DB as MongoDB
+    participant VS as Vector Store
 
-YAILA keeps the Node/Express app structure. Endee is vendored under `backend/vendor/endee` and integrated as an optional HTTP vector backend behind a clean adapter layer in the backend.
+    User->>FE: Upload document
+    FE->>API: POST /api/documents
+    API->>DB: Save document metadata
+    API->>Q: Enqueue ingestion job
 
-## Backend setup
+    Q->>P: Parse page batches
+    P->>C: Send cleaned text
+    C->>E: Build chunk batches
+    E->>DB: Save chunks/progress
+    E->>VS: Upsert vectors
+
+    API->>DB: Mark ingestion completed
+    API->>DB: Trigger summary/graph/roadmap follow-up
+    API-->>FE: Document ready
+```
+
+## UML: chat retrieval flow
+
+```mermaid
+sequenceDiagram
+    autonumber
+    actor User
+    participant FE as Frontend
+    participant API as Backend API
+    participant I as Intent Service
+    participant R as Retrieval Service
+    participant VS as Vector Store
+    participant O as Tutor Orchestrator
+    participant LLM as LLM Provider
+
+    User->>FE: Ask a question
+    FE->>API: POST /api/ai/chat/:id
+    API->>I: Classify intent
+    API->>R: Fetch relevant chunks
+    R->>VS: Semantic + lexical lookup
+    VS-->>R: Ranked chunks
+    R-->>API: Grounding context
+    API->>O: Build final prompt
+    O->>LLM: Send prompt + context
+    LLM-->>O: Answer
+    O-->>API: Response + citations
+    API-->>FE: Chat result
+```
+
+## Core flow
+
+1. User logs in (or guest login).
+2. User uploads a document from Documents page.
+3. Backend parses, chunks, embeds, and indexes it.
+4. Document opens in a multi-tab workspace (chat/summary/flashcards/quiz).
+5. User can continue with graph and roadmap views.
+
+## Project structure
+
+```text
+backend/
+  config/
+  controllers/
+  jobs/
+  middleware/
+  models/
+  repositories/
+  routes/
+  services/
+  tests/
+  utils/
+  vendor/endee/
+
+frontend/
+  public/
+    readme/
+  src/app/
+  src/services/
+
+README.md
+```
+
+## Main backend modules
+
+- `backend/services/documentIngestionService.js`
+- `backend/services/chunkingService.js`
+- `backend/services/retrievalService.js`
+- `backend/services/chatService.js`
+- `backend/services/tutorOrchestratorService.js`
+- `backend/services/summaryService.js`
+- `backend/services/quizService.js`
+- `backend/services/knowledgeGraphService.js`
+- `backend/services/roadmapService.js`
+
+## Main frontend modules
+
+- `frontend/src/app/routes.tsx`
+- `frontend/src/app/context/AuthContext.tsx`
+- `frontend/src/services/api.js`
+- `frontend/src/app/pages/DocumentDetail.tsx`
+- `frontend/src/app/pages/KnowledgeGraph.tsx`
+- `frontend/src/app/pages/LearningRoadmap.tsx`
+
+## API groups
+
+- `/api/auth`
+- `/api/documents`
+- `/api/ai`
+- `/api/flashcards`
+- `/api/quizzes`
+- `/api/graph`
+- `/api/roadmaps`
+- `/api/dashboard`
+- `/api/activity`
+- `/api/notifications`
+
+## Local setup
+
+Backend:
 
 ```bash
 cd backend
@@ -45,47 +231,7 @@ cp .env.example .env
 npm run dev
 ```
 
-Core env knobs live in:
-
-- `backend/.env.example`
-
-Important settings:
-
-- `VECTOR_STORE_PROVIDER=mongo|endee`
-- `INGESTION_PAGE_BATCH_SIZE`
-- `INGESTION_CHUNK_BATCH_SIZE`
-- `EMBEDDING_BATCH_SIZE`
-- `INGESTION_CHECKPOINT_ENABLED`
-- `INGESTION_USE_AI_CHUNK_SUMMARIES`
-- `RETRIEVAL_TOP_K`
-- `RETRIEVAL_CONTEXT_RADIUS`
-
-### Running with Endee
-
-Default behavior stays backward compatible with Mongo vector search:
-
-```env
-VECTOR_STORE_PROVIDER=mongo
-```
-
-To use Endee:
-
-```env
-VECTOR_STORE_PROVIDER=endee
-ENDEE_BASE_URL=http://localhost:8080
-ENDEE_AUTH_TOKEN=
-ENDEE_INDEX_NAME=document-chunks
-ENDEE_SPACE_TYPE=cosine
-ENDEE_PRECISION=int16
-```
-
-Endee source is vendored under:
-
-- `backend/vendor/endee`
-
-Use Endee’s own build/run docs there if you want the external vector DB path. If Endee is unavailable, YAILA still keeps Mongo chunk records and can fall back to Mongo vector retrieval.
-
-## Frontend setup
+Frontend:
 
 ```bash
 cd frontend
@@ -93,108 +239,34 @@ npm install
 npm run dev
 ```
 
-Frontend env:
+## Important env variables
 
-```env
-VITE_API_URL=http://localhost:5001/api
-```
+From `backend/.env.example`:
 
-## Large-document ingestion flow
+- `AI_PRIMARY_PROVIDER`
+- `AI_FALLBACK_PROVIDER`
+- `VECTOR_STORE_PROVIDER`
+- `DOCUMENT_UPLOAD_MAX_MB`
+- `INGESTION_PAGE_BATCH_SIZE`
+- `EMBEDDING_BATCH_SIZE`
+- `RETRIEVAL_TOP_K`
+- `RESUME_INGESTION_ON_BOOT`
 
-For PDFs in the 1000–2000 page range, the backend now:
+## Health, tests, benchmark
 
-1. Reads page counts first.
-2. Parses pages in batches instead of loading the whole PDF into memory.
-3. Removes repeated boilerplate where detectable.
-4. Builds chunks incrementally with deterministic chunk indexes.
-5. Embeds chunks in batches.
-6. Writes chunks in bulk to Mongo.
-7. Indexes vectors in bulk to Mongo or Endee.
-8. Saves progress checkpoints so failed jobs can resume.
+- Health: `GET /api/health`
+- AI health: `GET /api/ai/test`
 
-Checkpoint state is stored in:
-
-- `backend/models/DocumentIngestionCheckpoint.js`
-
-## Retrieval and RAG
-
-Semantic retrieval is unified in:
-
-- `backend/services/retrievalService.js`
-
-Vector backends:
-
-- `backend/services/vectorStores/mongoVectorStore.js`
-- `backend/services/vectorStores/endeeVectorStore.js`
-
-The chat flow uses hybrid retrieval:
-
-- semantic candidates
-- lexical candidates
-- rerank
-- near-duplicate filtering
-- optional adjacent context expansion
-
-### Retrieval API
-
-You can inspect the semantic retrieval path directly:
-
-```bash
-POST /api/ai/retrieve
-```
-
-Request body:
-
-```json
-{
-  "query": "Explain biconditional logic",
-  "documentIds": ["<document-id>"],
-  "topK": 4
-}
-```
-
-## Tests
+Run tests:
 
 ```bash
 cd backend
 npm test
 ```
 
-Current tests cover:
-
-- chunking behavior
-- resumable chunk-session state
-- local embedding fallback
-- Endee adapter indexing/search hydration
-- retrieval merging and de-duplication
-
-## Benchmark
-
-Run the synthetic large-document benchmark:
+Run ingestion benchmark:
 
 ```bash
 cd backend
 npm run benchmark:ingestion
 ```
-
-Optional knobs:
-
-```bash
-BENCHMARK_PAGE_COUNT=1500 BENCHMARK_PARAGRAPHS_PER_PAGE=6 npm run benchmark:ingestion
-```
-
-## Key backend files
-
-- `backend/services/documentIngestionService.js`
-- `backend/services/chunkingService.js`
-- `backend/utils/pdfParser.js`
-- `backend/services/retrievalService.js`
-- `backend/services/vectorStores/vectorStoreFactory.js`
-- `backend/controllers/aiController.js`
-
-## Notes
-
-- Mongo remains the default vector path for easy local startup.
-- Endee is integrated cleanly but optional.
-- OCR stays opt-in and is not used by default for PDFs with an existing text layer.
-- The ingestion path preserves document/page/section metadata for downstream study features.
