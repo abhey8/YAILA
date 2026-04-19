@@ -4,7 +4,7 @@ YAILA is an AI learning workspace for your own study documents.
 
 You upload a PDF, the backend processes it into searchable chunks, and then you can study from the same material using chat, summary, flashcards, quiz, concept graph, and roadmap views.
 
-Demo link: _I will add this later._
+Demo link: [Project description video](https://drive.google.com/file/d/1eLP3eNHC5u9CKFlpGUW4BM1UJdDe6Oyh/view?usp=drive_link)
 
 ## What this project does
 
