@@ -68,30 +68,30 @@ This project is React + Express + MongoDB, with configurable AI/vector providers
 
 ```mermaid
 flowchart LR
-    U[User] --> FE[Frontend (React + Vite)]
-    FE --> API[Backend API (Express)]
+    U["User"] --> FE["Frontend - React + Vite"]
+    FE --> API["Backend API - Express"]
 
-    API --> DB[(MongoDB)]
-    API --> LLM[LLM Provider (Groq/Gemini)]
-    API --> VEC[Vector Store (Mongo/Endee)]
+    API --> DB[("MongoDB")]
+    API --> LLM["LLM Provider - Groq or Gemini"]
+    API --> VEC["Vector Store - Mongo or Endee"]
 
-    API --> INGEST[Ingestion Service]
-    INGEST --> PARSER[PDF Parser]
-    PARSER --> CHUNKER[Chunking]
-    CHUNKER --> EMBED[Embeddings]
+    API --> INGEST["Ingestion Service"]
+    INGEST --> PARSER["PDF Parser"]
+    PARSER --> CHUNKER["Chunking"]
+    CHUNKER --> EMBED["Embeddings"]
     EMBED --> DB
     EMBED --> VEC
 
-    API --> CHAT[Chat + Tutor Orchestrator]
-    CHAT --> RETRIEVE[Retrieval Service]
+    API --> CHAT["Chat and Tutor Orchestrator"]
+    CHAT --> RETRIEVE["Retrieval Service"]
     RETRIEVE --> DB
     RETRIEVE --> VEC
 
-    API --> SUMMARY[Summary Service]
-    API --> FLASH[Flashcard Service]
-    API --> QUIZ[Quiz Service]
-    API --> GRAPH[Knowledge Graph Service]
-    API --> ROADMAP[Roadmap Service]
+    API --> SUMMARY["Summary Service"]
+    API --> FLASH["Flashcard Service"]
+    API --> QUIZ["Quiz Service"]
+    API --> GRAPH["Knowledge Graph Service"]
+    API --> ROADMAP["Roadmap Service"]
 ```
 
 ## UML: document ingestion sequence
